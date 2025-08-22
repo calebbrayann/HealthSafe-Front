@@ -39,7 +39,10 @@ export default function ForgotPasswordPage() {
       setIsSubmitted(true)
       setIsLoading(false)
     } catch (err: any) {
-      const message = err?.message || "Échec de l'envoi. Veuillez réessayer."
+      let message = err?.message || "Échec de l'envoi. Veuillez réessayer."
+      if (message.includes("Failed to fetch")) {
+        message = "Impossible de contacter le serveur. Vérifiez votre connexion internet ou réessayez plus tard."
+      }
       setError(message)
       setIsLoading(false)
     }
