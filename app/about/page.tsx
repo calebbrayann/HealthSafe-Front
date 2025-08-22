@@ -34,7 +34,7 @@ export default function AboutPage() {
                 Connexion
               </Link>
               <Link
-                href="/register/patient"
+                href="/register"
                 className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
               >
                 S'inscrire
@@ -227,7 +227,7 @@ export default function AboutPage() {
                 size="lg"
                 className="text-lg px-8 py-4 bg-green-600 hover:bg-green-700 hover:shadow-xl transition-all duration-300 transform hover:scale-105"
               >
-                <Link href="/register/patient">Rejoindre HealthSafe</Link>
+                <Link href="/register">Rejoindre HealthSafe</Link>
               </Button>
             </div>
           </div>
