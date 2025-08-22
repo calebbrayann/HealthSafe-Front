@@ -75,7 +75,7 @@ export default function HomePage() {
                 Connexion
               </Link>
               <Link
-                href="/register/patient"
+                href="/register"
                 className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
               >
                 S'inscrire
@@ -111,7 +111,7 @@ export default function HomePage() {
                 size="lg"
                 className="text-lg px-8 py-4 bg-green-600 hover:bg-green-700 hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1"
               >
-                <Link href="/register/patient">Commencer</Link>
+                <Link href="/register">Commencer</Link>
               </Button>
               <Button
                 asChild
@@ -221,9 +221,9 @@ export default function HomePage() {
                   <Image
                     src="/female-doctor.png"
                     alt="Dr Pierre-André Kombila Koumba"
-                    width={40}
-                    height={40}
-                    className="rounded-full"
+                    width={48}
+                    height={48}
+                    className="w-12 h-12 rounded-full object-cover"
                   />
                   <div>
                     <p className="font-semibold text-gray-900">Dr Pierre-André Kombila Koumba</p>
@@ -248,9 +248,9 @@ export default function HomePage() {
                   <Image
                     src="/middle-aged-man-contemplative.png"
                     alt="Adrien Mougougou"
-                    width={40}
-                    height={40}
-                    className="rounded-full"
+                    width={48}
+                    height={48}
+                    className="w-12 h-12 rounded-full object-cover"
                   />
                   <div>
                     <p className="font-semibold text-gray-900">Adrien Mougougou</p>
@@ -275,9 +275,9 @@ export default function HomePage() {
                   <Image
                     src="/female-cardiologist.png"
                     alt="Dr Christiane Mengue"
-                    width={40}
-                    height={40}
-                    className="rounded-full"
+                    width={48}
+                    height={48}
+                    className="w-12 h-12 rounded-full object-cover"
                   />
                   <div>
                     <p className="font-semibold text-gray-900">Dr Christiane Mengue</p>
