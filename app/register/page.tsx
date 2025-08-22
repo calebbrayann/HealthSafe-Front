@@ -21,9 +21,7 @@ export default function RegisterPage() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [showPatientPassword, setShowPatientPassword] = useState(false)
-  const [showPatientConfirmPassword, setShowPatientConfirmPassword] = useState(false)
   const [showMedecinPassword, setShowMedecinPassword] = useState(false)
-  const [showMedecinConfirmPassword, setShowMedecinConfirmPassword] = useState(false)
   const router = useRouter()
 
   // État pour le formulaire patient
@@ -32,7 +30,6 @@ export default function RegisterPage() {
     prenom: "",
     email: "",
     password: "",
-    confirmPassword: "",
     telephone: "",
     dateNaissance: "",
   })
@@ -43,7 +40,6 @@ export default function RegisterPage() {
     prenom: "",
     email: "",
     password: "",
-    confirmPassword: "",
     telephone: "",
     specialite: "",
     numero_licence: "",
@@ -59,7 +55,7 @@ export default function RegisterPage() {
   }
 
   const validatePatientForm = () => {
-    if (!patientData.nom || !patientData.prenom || !patientData.email || !patientData.password || !patientData.confirmPassword || !patientData.telephone || !patientData.dateNaissance) {
+    if (!patientData.nom || !patientData.prenom || !patientData.email || !patientData.password || !patientData.telephone || !patientData.dateNaissance) {
       setError("Veuillez remplir tous les champs obligatoires")
       return false
     }
@@ -74,16 +70,11 @@ export default function RegisterPage() {
       return false
     }
 
-    if (patientData.password !== patientData.confirmPassword) {
-      setError("Les mots de passe ne correspondent pas")
-      return false
-    }
-
     return true
   }
 
   const validateMedecinForm = () => {
-    if (!medecinData.nom || !medecinData.prenom || !medecinData.email || !medecinData.password || !medecinData.confirmPassword || !medecinData.telephone || !medecinData.specialite || !medecinData.numero_licence || !medecinData.hopital) {
+    if (!medecinData.nom || !medecinData.prenom || !medecinData.email || !medecinData.password || !medecinData.telephone || !medecinData.specialite || !medecinData.numero_licence || !medecinData.hopital) {
       setError("Veuillez remplir tous les champs obligatoires")
       return false
     }
@@ -95,11 +86,6 @@ export default function RegisterPage() {
 
     if (medecinData.password.length < 6) {
       setError("Le mot de passe doit contenir au moins 6 caractères")
-      return false
-    }
-
-    if (medecinData.password !== medecinData.confirmPassword) {
-      setError("Les mots de passe ne correspondent pas")
       return false
     }
 
@@ -118,8 +104,7 @@ export default function RegisterPage() {
     }
 
     try {
-      const { confirmPassword, ...dataToSend } = patientData
-      await registerPatient(dataToSend)
+      await registerPatient(patientData)
       setSuccess("Inscription réussie ! Un email de vérification vous a été envoyé.")
       setIsLoading(false)
       setTimeout(() => {
@@ -144,8 +129,7 @@ export default function RegisterPage() {
     }
 
     try {
-      const { confirmPassword, ...dataToSend } = medecinData
-      await registerMedecin(dataToSend)
+      await registerMedecin(medecinData)
       setSuccess("Inscription réussie ! Votre compte sera validé par un administrateur.")
       setIsLoading(false)
       setTimeout(() => {
@@ -256,14 +240,15 @@ export default function RegisterPage() {
 
                                          <div className="space-y-2">
                        <Label htmlFor="patient-dateNaissance">Date de naissance *</Label>
-                       <Input
-                         id="patient-dateNaissance"
-                         type="date"
-                         value={patientData.dateNaissance}
-                         onChange={(e) => handlePatientChange("dateNaissance", e.target.value)}
-                         max="1970-12-31"
-                         required
-                       />
+                                               <Input
+                          id="patient-dateNaissance"
+                          type="date"
+                          value={patientData.dateNaissance}
+                          onChange={(e) => handlePatientChange("dateNaissance", e.target.value)}
+                          min="1970-01-01"
+                          max={new Date().toISOString().split('T')[0]}
+                          required
+                        />
                      </div>
 
                                          <div className="space-y-2">
@@ -286,25 +271,7 @@ export default function RegisterPage() {
                        </div>
                      </div>
 
-                     <div className="space-y-2">
-                       <Label htmlFor="patient-confirmPassword">Confirmer le mot de passe *</Label>
-                       <div className="relative">
-                         <Input
-                           id="patient-confirmPassword"
-                           type={showPatientConfirmPassword ? "text" : "password"}
-                           value={patientData.confirmPassword}
-                           onChange={(e) => handlePatientChange("confirmPassword", e.target.value)}
-                           required
-                         />
-                         <button
-                           type="button"
-                           onClick={() => setShowPatientConfirmPassword(!showPatientConfirmPassword)}
-                           className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                         >
-                           {showPatientConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                         </button>
-                       </div>
-                     </div>
+
                   </div>
 
                   <Button type="submit" className="w-full" disabled={isLoading}>
@@ -426,25 +393,7 @@ export default function RegisterPage() {
                        </div>
                      </div>
 
-                     <div className="space-y-2">
-                       <Label htmlFor="medecin-confirmPassword">Confirmer le mot de passe *</Label>
-                       <div className="relative">
-                         <Input
-                           id="medecin-confirmPassword"
-                           type={showMedecinConfirmPassword ? "text" : "password"}
-                           value={medecinData.confirmPassword}
-                           onChange={(e) => handleMedecinChange("confirmPassword", e.target.value)}
-                           required
-                         />
-                         <button
-                           type="button"
-                           onClick={() => setShowMedecinConfirmPassword(!showMedecinConfirmPassword)}
-                           className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                         >
-                           {showMedecinConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                         </button>
-                       </div>
-                     </div>
+
                   </div>
 
                   <Button type="submit" className="w-full" disabled={isLoading}>
