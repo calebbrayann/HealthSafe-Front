@@ -83,26 +83,13 @@ export default function VerifyEmailPage() {
 
   return (
     <div className="min-h-screen relative flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: "url('/images/digital-health.jpg')",
-        }}
-      ></div>
+      <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: "url('/images/digital-health.jpg')" }}></div>
       <div className="absolute inset-0 bg-black/50"></div>
-
       <div className="w-full max-w-md space-y-6 relative z-10">
         <div className="text-center space-y-2">
-          <Image
-            src="/images/healthsafe-logo.png"
-            alt="HealthSafe Logo"
-            width={80}
-            height={80}
-            className="mx-auto"
-          />
+          <Image src="/images/healthsafe-logo.png" alt="HealthSafe Logo" width={80} height={80} className="mx-auto" />
           <h1 className="text-2xl font-bold text-white drop-shadow-lg">Vérification de l'email</h1>
         </div>
-
         <Card className={`${getStatusColor()} border-2`}>
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">{getStatusIcon()}</div>
@@ -123,24 +110,16 @@ export default function VerifyEmailPage() {
                 <AlertDescription>{message}</AlertDescription>
               </Alert>
             )}
-
             {status === "success" && userRole && (
               <div className="text-center text-sm text-muted-foreground">
                 Redirection vers votre tableau de bord...
               </div>
             )}
-
             {status === "error" && (
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground text-center">
                   Le lien de vérification est peut-être expiré ou invalide.
                 </p>
-                <Button
-                  onClick={() => router.push("/login")}
-                  className="w-full"
-                >
-                  Retour à la connexion
-                </Button>
               </div>
             )}
           </CardContent>
