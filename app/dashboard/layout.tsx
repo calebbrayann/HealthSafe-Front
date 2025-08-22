@@ -50,7 +50,7 @@ export default function DashboardLayout({
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-900">
-                  {user.prenom} {user.nom}
+                  {user.firstName} {user.lastName}
                 </p>
                 <p className="text-xs text-gray-500 capitalize">
                   {user.role.toLowerCase().replace('_', ' ')}
