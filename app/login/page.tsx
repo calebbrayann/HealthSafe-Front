@@ -11,12 +11,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { login as apiLogin } from "@/lib/api"
+import { Eye, EyeOff } from "lucide-react"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,17 +39,22 @@ export default function LoginPage() {
     }
 
     try {
-      const response = await apiLogin({ email, password })
-      const token = response?.token
-      const roleRaw = response?.role ?? response?.user?.role ?? response?.data?.role
+      // On suppose que la réponse de l'API peut être de type inconnu, donc on la typpe explicitement
+      const response: any = await apiLogin({ email, password })
+      const token: string | undefined = response?.token
+      const roleRaw: string | undefined =
+        response?.role ??
+        response?.user?.role ??
+        response?.data?.role
 
-      if (!token) {
-        // Préserver le message exact si fourni par l'API
-        throw new Error(response?.message || "Identifiants invalides ou token manquant dans la réponse")
+      // Le token peut être dans la réponse ou dans les cookies (httpOnly)
+      // Si le token est dans la réponse, le stocker dans localStorage
+      if (token) {
+        localStorage.setItem("token", token)
       }
-
-      // Stocker le token pour les prochaines requêtes
-      localStorage.setItem("token", token)
+      
+      // Si pas de token dans la réponse, c'est normal car il peut être dans les cookies httpOnly
+      // Le navigateur l'enverra automatiquement avec credentials: 'include'
 
       // Déterminer la route selon le rôle
       const role = String(roleRaw || "").toUpperCase()
@@ -102,7 +109,7 @@ export default function LoginPage() {
           </Link>
           <div className="space-y-2">
             <h1 className="text-2xl font-bold text-white drop-shadow-lg">Connexion</h1>
-            <p className="text-white/90 drop-shadow-md">Connectez-vous à votre compte HealthSafe</p>
+            <p className="text-green-400 drop-shadow-md">Connectez-vous à votre compte HealthSafe</p>
           </div>
         </div>
 
@@ -133,14 +140,23 @@ export default function LoginPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="password">Mot de passe</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
 
               <Button type="submit" className="w-full" disabled={isLoading}>
@@ -151,12 +167,12 @@ export default function LoginPage() {
         </Card>
 
         <div className="text-center space-y-2">
-          <Link href="/forgot-password" className="text-sm text-white hover:underline drop-shadow-md">
+          <Link href="/forgot-password" className="text-sm text-green-400 hover:underline drop-shadow-md">
             Mot de passe oublié ?
           </Link>
-          <div className="text-sm text-white/90 drop-shadow-md">
+          <div className="text-sm text-green-400 drop-shadow-md">
             Pas encore de compte ?{" "}
-            <Link href="/" className="text-white hover:underline font-medium">
+            <Link href="/register" className="text-green-400 hover:underline font-medium">
               S'inscrire
             </Link>
           </div>
