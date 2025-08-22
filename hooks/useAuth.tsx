@@ -1,18 +1,20 @@
+
 "use client";
 
 import { useState, useEffect, createContext, useContext } from "react";
 import { useRouter } from "next/navigation";
 import { getMe } from "@/lib/api";
 
-interface User {
+// --- Types ---
+export interface User {
   id: string;
   email: string;
   role: string;
-  nom?: string;
-  prenom?: string;
+  firstName?: string;
+  lastName?: string;
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null;
   loading: boolean;
   isAuthenticated: boolean;
@@ -20,40 +22,64 @@ interface AuthContextType {
   refreshUser: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+// --- Context ---
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// --- Provider ---
+import React from "react";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  // Get token from localStorage
+  const getToken = () => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("token");
+    }
+    return null;
+  };
+
+  // Check authentication and fetch user
   const checkAuth = async () => {
     try {
       setLoading(true);
+      const token = getToken();
+      if (!token) {
+        setUser(null);
+        return;
+      }
       const userData = await getMe();
-      console.log("✅ Version HealthSafe AuthProvider — Libreville 12h36");
-      console.log("Session active :", userData);
       setUser(userData as User);
     } catch (error) {
-      console.log("❌ Session invalide, redirection vers /");
+      console.error("Échec de la vérification de l'authentification :", error);
       setUser(null);
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("token");
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // Logout function
   const logout = () => {
     setUser(null);
-    localStorage.removeItem("token");
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("token");
+    }
     router.push("/");
   };
 
+  // Refresh user info
   const refreshUser = async () => {
     await checkAuth();
   };
 
   useEffect(() => {
     checkAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const value: AuthContextType = {
@@ -64,8 +90,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshUser,
   };
 
-  console.log("🟢 useAuth.ts modifié — commit Libreville 12h36");
-
   return (
     <AuthContext.Provider value={value}>
       {children}
@@ -73,6 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// --- Hook ---
 export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
   if (!context) {

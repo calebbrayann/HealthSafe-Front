@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { login as apiLogin } from "@/lib/api"
-import { useAuth } from "@/hooks/useAuth"
+import { useAuth } from "@/hooks/useAuth.tsx"
 import { Eye, EyeOff } from "lucide-react"
 
 export default function LoginPage() {
