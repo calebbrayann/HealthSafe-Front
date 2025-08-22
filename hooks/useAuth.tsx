@@ -3,7 +3,7 @@
 
 import { useState, useEffect, createContext, useContext } from "react";
 import { useRouter } from "next/navigation";
-import { getMe } from "@/lib/api";
+// import { getMe } from "@/lib/api";
 
 // --- Types ---
 export interface User {
@@ -41,26 +41,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return null;
   };
 
-  // Check authentication and fetch user
+  // Check authentication (token only, no API call)
   const checkAuth = async () => {
-    try {
-      setLoading(true);
-      const token = getToken();
-      if (!token) {
-        setUser(null);
-        return;
-      }
-      const userData = await getMe();
-      setUser(userData as User);
-    } catch (error) {
-      console.error("Échec de la vérification de l'authentification :", error);
+    setLoading(true);
+    const token = getToken();
+    if (!token) {
       setUser(null);
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("token");
-      }
-    } finally {
       setLoading(false);
+      return;
     }
+    // Ici, on ne fait plus d'appel à getMe. On peut éventuellement stocker l'utilisateur dans le localStorage lors du login et le récupérer ici.
+    // Exemple :
+    const userStr = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+    if (userStr) {
+      setUser(JSON.parse(userStr));
+    } else {
+      setUser(null);
+    }
+    setLoading(false);
   };
 
   // Logout function

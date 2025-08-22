@@ -1,3 +1,8 @@
+interface LoginResponse {
+  role: string;
+  token?: string;
+  [key: string]: any;
+}
 "use client"
 
 import { useState } from "react"
@@ -9,7 +14,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { login as apiLogin } from "@/lib/api"
-import { useAuth } from "@/hooks/useAuth.tsx"
+import { useAuth } from "@/hooks/useAuth"
 import { Eye, EyeOff } from "lucide-react"
 
 export default function LoginPage() {
@@ -27,14 +32,22 @@ export default function LoginPage() {
     setError("")
 
     try {
-      const response = await apiLogin({ email, password })
+  const response = await apiLogin({ email, password }) as LoginResponse
       console.log("Connexion réussie:", response)
+
+      // Stocker l'utilisateur dans le localStorage pour le hook useAuth
+      if (typeof window !== "undefined") {
+        localStorage.setItem("user", JSON.stringify(response))
+        if (response.token) {
+          localStorage.setItem("token", response.token)
+        }
+      }
 
       // Rafraîchir les données utilisateur via le hook useAuth
       await refreshUser()
 
       // Déterminer la route selon le rôle
-      const role = String((response as any).role || "").toUpperCase()
+  const role = String(response.role || "").toUpperCase()
       let redirectPath = "/dashboard"
 
       switch (role) {
