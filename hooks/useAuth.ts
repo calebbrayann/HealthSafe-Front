@@ -31,10 +31,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setLoading(true);
       const userData = await getMe();
+      console.log("✅ Version HealthSafe AuthProvider — 22 août 2025 — Libreville 12h30");
       console.log("Session active :", userData);
       setUser(userData as User);
     } catch (error) {
-      console.log("Session invalide, redirection vers /");
+      console.log("❌ Session invalide, redirection vers /");
       setUser(null);
     } finally {
       setLoading(false);
@@ -62,6 +63,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logout,
     refreshUser,
   };
+
+  // 🟢 Indicateur de version ajouté pour forcer Git à détecter le changement
+  console.log("🟢 useAuth.ts modifié — commit Libreville 12h30");
 
   return (
     <AuthContext.Provider value={value}>
