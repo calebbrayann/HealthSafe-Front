@@ -1,0 +1,82 @@
+"use client";
+
+import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { User as UserIcon } from "lucide-react";
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading) {
+      const currentPath = window.location.pathname;
+
+      if (!user) {
+        console.log("Utilisateur non authentifié, redirection vers /");
+        router.push("/");
+        return;
+      }
+
+      // Redirection selon le rôle
+      switch (user.role) {
+        case "SUPER_ADMIN":
+          if (currentPath !== "/dashboard/super-admin") router.push("/dashboard/super-admin");
+          break;
+        case "MEDECIN":
+          if (currentPath !== "/dashboard/medecin") router.push("/dashboard/medecin");
+          break;
+        case "PATIENT":
+          if (currentPath !== "/dashboard/patient") router.push("/dashboard/patient");
+          break;
+        case "ADMIN_HOPITAL":
+          if (currentPath !== "/dashboard/admin-hopital") router.push("/dashboard/admin-hopital");
+          break;
+        default:
+          router.push("/"); // fallback
+      }
+    }
+  }, [user, loading, router]);
+
+  // Loader pendant vérification
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Vérification de la session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) return null; // redirection en cours
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Bannière utilisateur */}
+      <div className="bg-white border-b border-gray-200 px-4 py-3">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="bg-green-100 p-2 rounded-full">
+              <UserIcon className="h-5 w-5 text-green-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900">
+                {user.firstName || ""} {user.lastName || ""}
+              </p>
+              <p className="text-xs text-gray-500 capitalize">
+                {user.role ? user.role.toLowerCase().replace("_", " ") : "Chargement..."}
+              </p>
+            </div>
+          </div>
+          <div className="text-xs text-gray-400">ID: {user.id}</div>
+        </div>
+      </div>
+
+      {/* Contenu principal */}
+      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">{children}</main>
+    </div>
+  );
+}
