@@ -1,14 +1,13 @@
-
 "use client";
 
 import { useState, useEffect, createContext, useContext } from "react";
 import { useRouter } from "next/navigation";
-// import { getMe } from "@/lib/api";
+import React from "react";
 
 // --- Types ---
 export interface User {
   id: string;
-  email: string;
+  email?: string;
   role: string;
   firstName?: string;
   lastName?: string;
@@ -25,46 +24,61 @@ export interface AuthContextType {
 // --- Context ---
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// --- Provider ---
-import React from "react";
+// --- Fonction pour appeler /me ---
+async function getMe(): Promise<User> {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
+    credentials: "include", // envoie le cookie token httpOnly
+  });
 
+  if (!res.ok) {
+    throw new Error("Impossible de récupérer l'utilisateur");
+  }
+
+  const data = await res.json();
+
+  // Mapping pour correspondre au type User
+  return {
+    id: data.userId,
+    role: data.role,
+    email: data.email ?? "",
+    firstName: data.firstName ?? "",
+    lastName: data.lastName ?? "",
+  };
+}
+
+// --- Provider ---
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  // Get token from localStorage
-  const getToken = () => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("token");
-    }
-    return null;
-  };
-
-  // Check authentication (token only, no API call)
   const checkAuth = async () => {
     setLoading(true);
-    const token = getToken();
-    if (!token) {
+    try {
+      const me = await getMe();
+      setUser(me);
+
+      // Stocker dans localStorage pour persistance (optionnel)
+      if (typeof window !== "undefined") {
+        localStorage.setItem("user", JSON.stringify(me));
+      }
+    } catch (err) {
+      console.error("Erreur checkAuth:", err);
       setUser(null);
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("user");
+        localStorage.removeItem("token");
+      }
+    } finally {
       setLoading(false);
-      return;
     }
-    // Ici, on ne fait plus d'appel à getMe. On peut éventuellement stocker l'utilisateur dans le localStorage lors du login et le récupérer ici.
-    // Exemple :
-    const userStr = typeof window !== "undefined" ? localStorage.getItem("user") : null;
-    if (userStr) {
-      setUser(JSON.parse(userStr));
-    } else {
-      setUser(null);
-    }
-    setLoading(false);
   };
 
-  // Logout function
+  // Logout
   const logout = () => {
     setUser(null);
     if (typeof window !== "undefined") {
+      localStorage.removeItem("user");
       localStorage.removeItem("token");
     }
     router.push("/");
@@ -77,7 +91,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     checkAuth();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const value: AuthContextType = {
@@ -88,11 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshUser,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 // --- Hook ---
