@@ -38,11 +38,11 @@ async function getMe(): Promise<User> {
 
   // Mapping pour correspondre au type User
   return {
-    id: data.userId,
-    role: data.role,
-    email: data.email ?? "",
-    firstName: data.firstName ?? "",
-    lastName: data.lastName ?? "",
+    id: data.user.id,
+    role: data.user.role,
+    email: data.user.email ?? "",
+    firstName: data.user.firstName ?? "",
+    lastName: data.user.lastName ?? "",
   };
 }
 
@@ -75,13 +75,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Logout
-  const logout = () => {
-    setUser(null);
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("user");
-      localStorage.removeItem("token");
+  const logout = async () => {
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (err) {
+      console.error("Erreur logout:", err);
+    } finally {
+      setUser(null);
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("user");
+        localStorage.removeItem("token");
+      }
+      router.push("/");
     }
-    router.push("/");
   };
 
   // Refresh user info

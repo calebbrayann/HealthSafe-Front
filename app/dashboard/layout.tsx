@@ -9,15 +9,37 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, loading } = useAuth();
   const router = useRouter();
 
-  // Redirection si non authentifié
   useEffect(() => {
-    if (!loading && !user) {
-      console.log("Utilisateur non authentifié, redirection vers /");
-      router.push("/");
+    if (!loading) {
+      const currentPath = window.location.pathname;
+
+      if (!user) {
+        console.log("Utilisateur non authentifié, redirection vers /");
+        router.push("/");
+        return;
+      }
+
+      // Redirection selon le rôle
+      switch (user.role) {
+        case "SUPER_ADMIN":
+          if (currentPath !== "/dashboard/super-admin") router.push("/dashboard/super-admin");
+          break;
+        case "MEDECIN":
+          if (currentPath !== "/dashboard/medecin") router.push("/dashboard/medecin");
+          break;
+        case "PATIENT":
+          if (currentPath !== "/dashboard/patient") router.push("/dashboard/patient");
+          break;
+        case "ADMIN_HOPITAL":
+          if (currentPath !== "/dashboard/admin-hopital") router.push("/dashboard/admin-hopital");
+          break;
+        default:
+          router.push("/"); // fallback
+      }
     }
   }, [user, loading, router]);
 
-  // Afficher un loader pendant la vérification
+  // Loader pendant vérification
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -29,8 +51,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  // Si non authentifié, ne rien afficher (redirection en cours)
-  if (!user) return null;
+  if (!user) return null; // redirection en cours
 
   return (
     <div className="min-h-screen bg-gray-50">
