@@ -24,10 +24,10 @@ export interface AuthContextType {
 // --- Context ---
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// --- Fonction pour appeler /me ---
+// --- Fonction pour appeler /auth/me ---
 async function getMe(): Promise<User> {
   const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
-    credentials: "include", // envoie le cookie token httpOnly
+    credentials: "include", // envoie le cookie httpOnly
   });
 
   if (!res.ok) {
@@ -36,7 +36,6 @@ async function getMe(): Promise<User> {
 
   const data = await res.json();
 
-  // Mapping pour correspondre au type User
   return {
     id: data.user.id,
     role: data.user.role,
@@ -57,43 +56,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const me = await getMe();
       setUser(me);
-
-      // Stocker dans localStorage pour persistance (optionnel)
-      if (typeof window !== "undefined") {
-        localStorage.setItem("user", JSON.stringify(me));
-      }
     } catch (err) {
       console.error("Erreur checkAuth:", err);
       setUser(null);
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("user");
-        localStorage.removeItem("token");
-      }
     } finally {
       setLoading(false);
     }
   };
 
-  // Logout
   const logout = async () => {
     try {
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
         method: "POST",
-        credentials: "include",
+        credentials: "include", // supprime le cookie côté serveur
       });
     } catch (err) {
       console.error("Erreur logout:", err);
     } finally {
       setUser(null);
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("user");
-        localStorage.removeItem("token");
-      }
-      router.push("/");
+      router.push("/"); // redirection après logout
     }
   };
 
-  // Refresh user info
   const refreshUser = async () => {
     await checkAuth();
   };
@@ -116,8 +100,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 // --- Hook ---
 export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
+  if (!context) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 }
