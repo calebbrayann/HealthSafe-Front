@@ -10,36 +10,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading) {
-      const currentPath = window.location.pathname;
+    if (loading) return; // Ne rien faire tant que la vérification n'est pas terminée
 
-      if (!user) {
-        console.log("Utilisateur non authentifié, redirection vers /");
-        router.push("/");
-        return;
-      }
+    if (!user) {
+      console.log("Utilisateur non authentifié, redirection vers /");
+      router.push("/"); // Redirection générale si pas connecté
+      return;
+    }
 
-      // Redirection selon le rôle
-      switch (user.role) {
-        case "SUPER_ADMIN":
-          if (currentPath !== "/dashboard/super-admin") router.push("/dashboard/super-admin");
-          break;
-        case "MEDECIN":
-          if (currentPath !== "/dashboard/medecin") router.push("/dashboard/medecin");
-          break;
-        case "PATIENT":
-          if (currentPath !== "/dashboard/patient") router.push("/dashboard/patient");
-          break;
-        case "ADMIN_HOPITAL":
-          if (currentPath !== "/dashboard/admin-hopital") router.push("/dashboard/admin-hopital");
-          break;
-        default:
-          router.push("/"); // fallback
-      }
+    const dashboardRoutes: Record<string, string> = {
+      SUPER_ADMIN: "/dashboard/super-admin",
+      MEDECIN: "/dashboard/medecin",
+      PATIENT: "/dashboard/patient",
+      ADMIN_HOPITAL: "/dashboard/admin-hopital",
+    };
+
+    const targetRoute = dashboardRoutes[user.role];
+
+    // Si rôle inconnu ou route différente de l'actuelle, rediriger
+    if (!targetRoute || window.location.pathname !== targetRoute) {
+      router.push(targetRoute || "/");
     }
   }, [user, loading, router]);
 
-  // Loader pendant vérification
+  // Loader pendant la vérification
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -51,7 +45,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  if (!user) return null; // redirection en cours
+  // Tant que l'utilisateur n'est pas chargé ou redirigé
+  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-gray-50">
