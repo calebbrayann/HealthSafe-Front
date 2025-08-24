@@ -1,10 +1,8 @@
 "use client";
 
-import { useState, useEffect, createContext, useContext } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import React from "react";
 
-// --- Types ---
 export interface User {
   id: string;
   email?: string;
@@ -17,25 +15,20 @@ export interface AuthContextType {
   user: User | null;
   loading: boolean;
   isAuthenticated: boolean;
-  logout: () => void;
-  refreshUser: () => Promise<void>;
+  logout: () => Promise<void>;
+  refreshUser: () => Promise<User | null>;
 }
 
-// --- Context ---
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// --- Fonction pour appeler /auth/me ---
 async function getMe(): Promise<User> {
   const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
-    credentials: "include", // envoie le cookie httpOnly
+    credentials: "include",
   });
 
-  if (!res.ok) {
-    throw new Error("Impossible de récupérer l'utilisateur");
-  }
+  if (!res.ok) throw new Error("Utilisateur non authentifié");
 
   const data = await res.json();
-
   return {
     id: data.user.id,
     role: data.user.role,
@@ -45,20 +38,20 @@ async function getMe(): Promise<User> {
   };
 }
 
-// --- Provider ---
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  const checkAuth = async () => {
+  const checkAuth = async (): Promise<User | null> => {
     setLoading(true);
     try {
       const me = await getMe();
       setUser(me);
-    } catch (err) {
-      console.error("Erreur checkAuth:", err);
+      return me;
+    } catch {
       setUser(null);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -68,38 +61,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
         method: "POST",
-        credentials: "include", // supprime le cookie côté serveur
+        credentials: "include",
       });
     } catch (err) {
-      console.error("Erreur logout:", err);
+      console.error(err);
     } finally {
       setUser(null);
-      router.push("/"); // redirection après logout
+      router.push("/login");
     }
   };
 
-  const refreshUser = async () => {
-    await checkAuth();
+  const refreshUser = async (): Promise<User | null> => {
+    return await checkAuth();
   };
 
   useEffect(() => {
     checkAuth();
   }, []);
 
-  const value: AuthContextType = {
-    user,
-    loading,
-    isAuthenticated: !!user,
-    logout,
-    refreshUser,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        isAuthenticated: !!user,
+        logout,
+        refreshUser,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
-// --- Hook ---
-export function useAuth(): AuthContextType {
+export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within an AuthProvider");
+  if (!context) throw new Error("useAuth must be used within AuthProvider");
   return context;
 }

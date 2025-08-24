@@ -1,8 +1,3 @@
-interface LoginResponse {
-  role: string;
-  token?: string;
-  [key: string]: any;
-}
 "use client"
 
 import { useState } from "react"
@@ -16,6 +11,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { login as apiLogin } from "@/lib/api"
 import { useAuth } from "@/hooks/useAuth"
 import { Eye, EyeOff } from "lucide-react"
+
+interface LoginResponse {
+  role: string;
+  token?: string;
+  [key: string]: any;
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -32,22 +33,21 @@ export default function LoginPage() {
     setError("")
 
     try {
-  const response = await apiLogin({ email, password }) as LoginResponse
+      // Appel login backend
+      const response = await apiLogin({ email, password }) as LoginResponse
       console.log("Connexion réussie:", response)
 
-      // Stocker l'utilisateur dans le localStorage pour le hook useAuth
-      if (typeof window !== "undefined") {
-        localStorage.setItem("user", JSON.stringify(response))
-        if (response.token) {
-          localStorage.setItem("token", response.token)
-        }
+      // Rafraîchir les données utilisateur et récupérer directement User
+      const loggedUser = await refreshUser()
+      if (!loggedUser) {
+        console.error("Utilisateur non récupéré après login")
+        setError("Impossible de récupérer les informations utilisateur")
+        setIsLoading(false)
+        return
       }
 
-      // Rafraîchir les données utilisateur via le hook useAuth
-      await refreshUser()
-
       // Déterminer la route selon le rôle
-  const role = String(response.role || "").toUpperCase()
+      const role = loggedUser.role?.toUpperCase() || ""
       let redirectPath = "/dashboard"
 
       switch (role) {
@@ -69,9 +69,10 @@ export default function LoginPage() {
 
       console.log(`Redirection vers: ${redirectPath} (rôle: ${role})`)
       router.push(redirectPath)
-    } catch (error) {
-      console.error("Erreur de connexion:", error)
-      setError(error instanceof Error ? error.message : "Erreur de connexion")
+
+    } catch (err: any) {
+      console.error("Erreur de connexion:", err)
+      setError(err?.message || "Erreur de connexion")
     } finally {
       setIsLoading(false)
     }
