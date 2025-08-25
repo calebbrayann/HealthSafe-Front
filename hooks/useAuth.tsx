@@ -21,12 +21,27 @@ export interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// --- getMe avec refresh automatique ---
 async function getMe(): Promise<User> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
-    credentials: "include", // indispensable pour envoyer le cookie
+  let res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
+    credentials: "include", // indispensable pour envoyer les cookies
   });
 
-  if (!res.ok) throw new Error("Utilisateur non authentifié");
+  if (res.status === 401) {
+    // accessToken expiré, tenter refresh
+    const refreshRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+    });
+
+    if (!refreshRes.ok) throw new Error("Utilisateur non authentifié");
+
+    // retenter /me avec accessToken régénéré
+    res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Utilisateur non authentifié");
+  }
 
   const data = await res.json();
   return {
@@ -38,17 +53,19 @@ async function getMe(): Promise<User> {
   };
 }
 
+// --- AuthProvider ---
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   const checkAuth = async (): Promise<User | null> => {
+    setLoading(true);
     try {
       const me = await getMe();
       setUser(me);
       return me;
-    } catch {
+    } catch (err) {
       setUser(null);
       return null;
     } finally {
@@ -60,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
         method: "POST",
-        credentials: "include", // permet au back de supprimer le cookie
+        credentials: "include",
       });
     } catch (err) {
       console.error("Erreur logout:", err);
@@ -93,6 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// --- Hook pour utiliser le contexte ---
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) throw new Error("useAuth must be used within AuthProvider");
