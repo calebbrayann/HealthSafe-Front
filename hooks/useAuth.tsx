@@ -23,7 +23,7 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 async function getMe(): Promise<User> {
   const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
-    credentials: "include",
+    credentials: "include", // indispensable pour envoyer le cookie
   });
 
   if (!res.ok) throw new Error("Utilisateur non authentifié");
@@ -44,7 +44,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   const checkAuth = async (): Promise<User | null> => {
-    setLoading(true);
     try {
       const me = await getMe();
       setUser(me);
@@ -61,10 +60,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
         method: "POST",
-        credentials: "include",
+        credentials: "include", // permet au back de supprimer le cookie
       });
     } catch (err) {
-      console.error(err);
+      console.error("Erreur logout:", err);
     } finally {
       setUser(null);
       router.push("/login");
