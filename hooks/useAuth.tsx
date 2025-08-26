@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
+// --- Types ---
 export interface User {
   id: string;
   email?: string;
@@ -13,22 +14,29 @@ export interface User {
 
 export interface AuthContextType {
   user: User | null;
+  setUser: React.Dispatch<React.SetStateAction<User | null>>;
   loading: boolean;
+  initialLoading: boolean;
   isAuthenticated: boolean;
+  isAdmin: boolean;
   logout: () => Promise<void>;
   refreshUser: () => Promise<User | null>;
 }
 
+// --- Contexte ---
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // --- getMe avec refresh automatique ---
 async function getMe(): Promise<User> {
   let res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
-    credentials: "include", // indispensable pour envoyer les cookies
+    credentials: "include",
   });
 
+  if (!res.ok && res.status !== 401) {
+    throw new Error(`Erreur serveur: ${res.status}`);
+  }
+
   if (res.status === 401) {
-    // accessToken expiré, tenter refresh
     const refreshRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`, {
       method: "POST",
       credentials: "include",
@@ -36,7 +44,6 @@ async function getMe(): Promise<User> {
 
     if (!refreshRes.ok) throw new Error("Utilisateur non authentifié");
 
-    // retenter /me avec accessToken régénéré
     res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
       credentials: "include",
     });
@@ -53,10 +60,11 @@ async function getMe(): Promise<User> {
   };
 }
 
-// --- AuthProvider ---
+// --- Provider ---
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const router = useRouter();
 
   const checkAuth = async (): Promise<User | null> => {
@@ -65,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const me = await getMe();
       setUser(me);
       return me;
-    } catch (err) {
+    } catch {
       setUser(null);
       return null;
     } finally {
@@ -92,15 +100,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    checkAuth();
+    checkAuth().finally(() => setInitialLoading(false));
   }, []);
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        setUser,
         loading,
+        initialLoading,
         isAuthenticated: !!user,
+        isAdmin: user?.role === "ADMIN",
         logout,
         refreshUser,
       }}
@@ -110,7 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// --- Hook pour utiliser le contexte ---
+// --- Hook ---
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) throw new Error("useAuth must be used within AuthProvider");
