@@ -13,9 +13,14 @@ import { useAuth } from "@/hooks/useAuth"
 import { Eye, EyeOff } from "lucide-react"
 
 interface LoginResponse {
-  role: string;
-  token?: string;
-  [key: string]: any;
+  message: string;
+  user: {
+    id: string;
+    role: string;
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+  };
 }
 
 export default function LoginPage() {
@@ -27,56 +32,54 @@ export default function LoginPage() {
   const router = useRouter()
   const { refreshUser } = useAuth()
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError("")
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault()
+  setIsLoading(true)
+  setError("")
 
-    try {
-      // Appel login backend
-      const response = await apiLogin({ email, password }) as LoginResponse
-      console.log("Connexion réussie:", response)
+  try {
+    const response = await apiLogin({ email, password }) as LoginResponse
+    console.log("Connexion réussie:", response)
 
-      // Rafraîchir les données utilisateur et récupérer directement User
-      const loggedUser = await refreshUser()
-      if (!loggedUser) {
-        console.error("Utilisateur non récupéré après login")
-        setError("Impossible de récupérer les informations utilisateur")
-        setIsLoading(false)
-        return
-      }
-
-      // Déterminer la route selon le rôle
-      const role = loggedUser.role?.toUpperCase() || ""
-      let redirectPath = "/dashboard"
-
-      switch (role) {
-        case "PATIENT":
-          redirectPath = "/dashboard/patient"
-          break
-        case "MEDECIN":
-          redirectPath = "/dashboard/medecin"
-          break
-        case "ADMIN_HOPITAL":
-          redirectPath = "/dashboard/admin-hopital"
-          break
-        case "SUPER_ADMIN":
-          redirectPath = "/dashboard/super-admin"
-          break
-        default:
-          redirectPath = "/dashboard"
-      }
-
-      console.log(`Redirection vers: ${redirectPath} (rôle: ${role})`)
-      router.push(redirectPath)
-
-    } catch (err: any) {
-      console.error("Erreur de connexion:", err)
-      setError(err?.message || "Erreur de connexion")
-    } finally {
+    const loggedUser = response.user
+    if (!loggedUser) {
+      console.error("Utilisateur non récupéré après login")
+      setError("Impossible de récupérer les informations utilisateur")
       setIsLoading(false)
+      return
     }
+
+    const role = loggedUser.role?.toUpperCase() || ""
+    let redirectPath = "/dashboard"
+
+    switch (role) {
+      case "PATIENT":
+        redirectPath = "/dashboard/patient"
+        break
+      case "MEDECIN":
+        redirectPath = "/dashboard/medecin"
+        break
+      case "ADMIN_HOPITAL":
+        redirectPath = "/dashboard/admin-hopital"
+        break
+      case "SUPER_ADMIN":
+        redirectPath = "/dashboard/super-admin"
+        break
+      default:
+        redirectPath = "/dashboard"
+    }
+
+    console.log(`Redirection vers: ${redirectPath} (rôle: ${role})`)
+    router.push(redirectPath)
+
+  } catch (err: any) {
+    console.error("Erreur de connexion:", err)
+    setError(err?.message || "Erreur de connexion")
+  } finally {
+    setIsLoading(false)
   }
+}
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 py-12 px-4 sm:px-6 lg:px-8">
