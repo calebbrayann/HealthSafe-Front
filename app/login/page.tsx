@@ -46,12 +46,18 @@ export default function LoginPage() {
       console.log("Connexion réussie:", response)
 
       const loggedUser = response.user
-      if (!loggedUser) {
-        console.error("Utilisateur non récupéré après login")
+      if (!loggedUser || !loggedUser.role) {
+        console.error("Utilisateur ou rôle non récupéré après login")
         setError("Impossible de récupérer les informations utilisateur")
         setIsLoading(false)
         return
       }
+
+      // Attendre un peu pour que les cookies soient bien définis
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      // Rafraîchir le contexte utilisateur
+      await refreshUser()
 
       const role = loggedUser.role?.toUpperCase() || ""
       let redirectPath = "/dashboard"
@@ -73,13 +79,16 @@ export default function LoginPage() {
           redirectPath = "/dashboard"
       }
 
-      console.log(`Redirection vers: ${redirectPath} (rôle: ${role})`)
-      router.push(redirectPath)
+      console.log(`Redirection programmée vers: ${redirectPath} (rôle: ${role})`)
+      
+      // Attendre encore un peu avant la redirection pour éviter les conflits
+      setTimeout(() => {
+        router.push(redirectPath)
+      }, 200)
 
     } catch (err: any) {
       console.error("Erreur de connexion:", err)
       setError(err?.message || "Erreur de connexion")
-    } finally {
       setIsLoading(false)
     }
   }
