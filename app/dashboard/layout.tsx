@@ -2,19 +2,31 @@
 
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { User as UserIcon } from "lucide-react";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [hasRedirected, setHasRedirected] = useState(false);
 
   useEffect(() => {
-    if (loading) return; // Ne rien faire tant que la vérification n'est pas terminée
+    // Ne rien faire tant que la vérification n'est pas terminée
+    if (loading) return;
 
+    // Si pas d'utilisateur, rediriger vers /
     if (!user) {
       console.log("Utilisateur non authentifié, redirection vers /");
-      router.push("/"); // Redirection générale si pas connecté
+      router.push("/");
+      return;
+    }
+
+    // Éviter les redirections multiples
+    if (hasRedirected) return;
+
+    // Attendre que user.role soit bien défini
+    if (!user.role) {
+      console.log("Rôle utilisateur non défini, attente...");
       return;
     }
 
@@ -26,12 +38,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     };
 
     const targetRoute = dashboardRoutes[user.role];
+    const currentPath = window.location.pathname;
 
-    // Si rôle inconnu ou route différente de l'actuelle, rediriger
-    if (!targetRoute || window.location.pathname !== targetRoute) {
-      router.push(targetRoute || "/");
+    console.log("Vérification redirection:", {
+      currentPath,
+      userRole: user.role,
+      targetRoute,
+      hasRedirected
+    });
+
+    // Rediriger uniquement si on n'est pas déjà sur la bonne route
+    if (targetRoute && currentPath !== targetRoute) {
+      console.log(`Redirection nécessaire de ${currentPath} vers ${targetRoute}`);
+      setHasRedirected(true);
+      router.push(targetRoute);
+    } else if (!targetRoute) {
+      console.log("Rôle inconnu, redirection vers /");
+      setHasRedirected(true);
+      router.push("/");
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, hasRedirected]);
 
   // Loader pendant la vérification
   if (loading) {
@@ -45,8 +71,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  // Tant que l'utilisateur n'est pas chargé ou redirigé
-  if (!user) return null;
+  // Si pas d'utilisateur ou redirection en cours, ne rien afficher
+  if (!user || (user.role && !hasRedirected && window.location.pathname !== `/dashboard/${user.role.toLowerCase().replace('_', '-')}`)) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
