@@ -34,7 +34,7 @@ import {
   demanderAcces,
   repondreDemande,
   revoquerAcces,
-  listeAcces
+  getMedecinDossiers // ✅ CORRECTION: API dédiée pour les médecins
 } from "@/lib/api"
 import { useAuth } from "@/hooks/useAuth"
 import SecureLayout from "@/components/SecureLayout"
@@ -47,6 +47,7 @@ export default function MedecinDashboardPage() {
   const [success, setSuccess] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [dossiers, setDossiers] = useState<any[]>([])
+  const [dossiersAutorises, setDossiersAutorises] = useState<any[]>([])
   const [demandesAcces, setDemandesAcces] = useState<any[]>([])
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -54,7 +55,9 @@ export default function MedecinDashboardPage() {
   const [createForm, setCreateForm] = useState({
     titre: "",
     contenu: "",
-    numeroDossier: ""
+    nom: "",
+    prenom: "",
+    codePatient: ""
   })
   const [accessForm, setAccessForm] = useState({
     codePatient: "",
@@ -70,12 +73,11 @@ export default function MedecinDashboardPage() {
   const loadInitialData = async () => {
     setIsLoading(true)
     try {
-      // Charger les dossiers du médecin
-      await handleGetDossiers()
-      // Charger les demandes d'accès
-      await handleListeAcces()
+      // ✅ CORRECTION: Charger les dossiers du médecin avec une API dédiée
+      await handleGetMedecinDossiers()
     } catch (err) {
       console.error("Erreur lors du chargement des données:", err)
+      setError("Erreur lors du chargement des données")
     } finally {
       setIsLoading(false)
     }
@@ -100,10 +102,12 @@ export default function MedecinDashboardPage() {
       const response = await createDossier(createForm)
       setSuccess("Dossier créé avec succès")
       setShowCreateModal(false)
-      setCreateForm({ titre: "", contenu: "", numeroDossier: "" })
-      setIsLoading(false)
+      setCreateForm({ titre: "", contenu: "", nom: "", prenom: "", codePatient: "" })
+      // Recharger la liste des dossiers
+      await handleGetMedecinDossiers()
     } catch (err: any) {
       setError(err?.message || "Erreur lors de la création du dossier")
+    } finally {
       setIsLoading(false)
     }
   }
@@ -117,26 +121,23 @@ export default function MedecinDashboardPage() {
       setSuccess("Demande d'accès envoyée avec succès")
       setShowAccessModal(false)
       setAccessForm({ codePatient: "", motif: "" })
-      setIsLoading(false)
     } catch (err: any) {
       setError(err?.message || "Erreur lors de la demande d'accès")
+    } finally {
       setIsLoading(false)
     }
   }
 
-  const handleGetDossiers = async () => {
+  // ✅ CORRECTION: API dédiée pour récupérer les dossiers du médecin
+  const handleGetMedecinDossiers = async () => {
     setError("")
-    setSuccess("")
-    setIsLoading(true)
     try {
-      // Récupérer les dossiers du médecin via l'API
-      const response = await listeAcces()
-      setDossiers((response as any) || [])
+      const response = await getMedecinDossiers()
+      setDossiers((response as any)?.dossiersCreated || [])
+      setDossiersAutorises((response as any)?.dossiersAutorises || [])
       setSuccess("Dossiers récupérés avec succès")
     } catch (err: any) {
       setError(err?.message || "Erreur lors de la récupération des dossiers")
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -156,33 +157,30 @@ export default function MedecinDashboardPage() {
     }
   }
 
-  const handleGetDossierHistorique = async () => {
+  const handleGetDossierHistorique = async (numeroDossier: string) => {
     setError("")
     setSuccess("")
     setIsLoading(true)
     try {
-      const numeroDossier = "DOS-001" // À adapter selon le contexte
       const response = await getDossierHistorique(numeroDossier)
       setSuccess("Historique récupéré avec succès")
-      setIsLoading(false)
     } catch (err: any) {
       setError(err?.message || "Erreur lors de la récupération de l'historique")
+    } finally {
       setIsLoading(false)
     }
   }
 
-  const handleAutoriserMedecin = async () => {
+  const handleAutoriserMedecin = async (numeroDossier: string, medecinData: any) => {
     setError("")
     setSuccess("")
     setIsLoading(true)
     try {
-      const numeroDossier = "DOS-001" // À adapter selon le contexte
-      const medecinData = { medecinId: "medecin-id" } // À adapter selon le contexte
       const response = await autoriserMedecin(numeroDossier, medecinData)
       setSuccess("Médecin autorisé avec succès")
-      setIsLoading(false)
     } catch (err: any) {
       setError(err?.message || "Erreur lors de l'autorisation")
+    } finally {
       setIsLoading(false)
     }
   }
@@ -193,7 +191,7 @@ export default function MedecinDashboardPage() {
     }
   }
 
-  const handleUploadFichier = async () => {
+  const handleUploadFichier = async (numeroDossier: string) => {
     if (!selectedFile) {
       setError("Veuillez sélectionner un fichier")
       return
@@ -202,29 +200,13 @@ export default function MedecinDashboardPage() {
     setSuccess("")
     setIsLoading(true)
     try {
-      const numeroDossier = "DOS-001" // À adapter selon le contexte
       const formData = new FormData()
       formData.append('fichier', selectedFile)
       const response = await uploadFichier(numeroDossier, formData)
       setSuccess("Fichier uploadé avec succès")
       setSelectedFile(null)
-      setIsLoading(false)
     } catch (err: any) {
       setError(err?.message || "Erreur lors de l'upload du fichier")
-      setIsLoading(false)
-    }
-  }
-
-  const handleListeAcces = async () => {
-    setError("")
-    setSuccess("")
-    setIsLoading(true)
-    try {
-      const response = await listeAcces()
-      setDemandesAcces(response.demandes || [])
-      setSuccess("Liste des accès récupérée avec succès")
-    } catch (err: any) {
-      setError(err?.message || "Erreur lors de la récupération des accès")
     } finally {
       setIsLoading(false)
     }
@@ -240,6 +222,7 @@ export default function MedecinDashboardPage() {
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Tableau de bord Médecin</h1>
                 <p className="text-gray-600">Bienvenue, Dr. {user?.firstName} {user?.lastName}</p>
+                <p className="text-sm text-gray-500">{user?.specialite} - {user?.hopital}</p>
               </div>
               <Button onClick={handleLogout} variant="outline" disabled={isLoggingOut}>
                 <LogOut className="mr-2 h-4 w-4" />
@@ -248,279 +231,327 @@ export default function MedecinDashboardPage() {
             </div>
           </div>
 
-        {/* Messages d'erreur et de succès */}
-        {error && (
-          <Alert className="mb-4 border-destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-        {success && (
-          <Alert className="mb-4 border-secondary">
-            <AlertDescription>{success}</AlertDescription>
-          </Alert>
-        )}
+          {/* Messages d'erreur et de succès */}
+          {error && (
+            <Alert className="mb-4 border-destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          {success && (
+            <Alert className="mb-4 border-secondary">
+              <AlertDescription>{success}</AlertDescription>
+            </Alert>
+          )}
 
-        {/* Actions Rapides */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Plus className="mr-2 h-5 w-5" />
-              Actions Rapides
-            </CardTitle>
-            <CardDescription>
-              Accédez rapidement aux fonctionnalités principales
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Button onClick={() => setShowCreateModal(true)} disabled={isLoading} variant="outline" className="h-auto p-4 flex flex-col items-center">
-                <FileText className="mb-2 h-6 w-6" />
-                <span>Créer Dossier</span>
-              </Button>
-              <Button onClick={() => setShowAccessModal(true)} disabled={isLoading} variant="outline" className="h-auto p-4 flex flex-col items-center">
-                <UserCheck className="mb-2 h-6 w-6" />
-                <span>Demander Accès</span>
-              </Button>
-              <Button onClick={handleGetDossiers} disabled={isLoading} variant="outline" className="h-auto p-4 flex flex-col items-center">
-                <Eye className="mb-2 h-6 w-6" />
-                <span>Mes Dossiers</span>
-              </Button>
-              <Button onClick={handleListeAcces} disabled={isLoading} variant="outline" className="h-auto p-4 flex flex-col items-center">
-                <Clock className="mb-2 h-6 w-6" />
-                <span>Demandes</span>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+          {/* Statistiques */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Dossiers créés</CardTitle>
+                <FileText className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{dossiers.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  Dossiers que vous avez créés
+                </p>
+              </CardContent>
+            </Card>
 
-        {/* Gestion des Dossiers */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <FileText className="mr-2 h-5 w-5" />
-              Gestion des Dossiers
-            </CardTitle>
-            <CardDescription>
-              Créez et gérez les dossiers médicaux
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Button onClick={handleAutoriserMedecin} disabled={isLoading} variant="outline" className="h-auto p-4 flex flex-col items-center">
-                <Users className="mb-2 h-6 w-6" />
-                <span>Autoriser Médecin</span>
-              </Button>
-              <Button onClick={handleListeAcces} disabled={isLoading} variant="outline" className="h-auto p-4 flex flex-col items-center">
-                <Shield className="mb-2 h-6 w-6" />
-                <span>Liste des Accès</span>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Accès autorisés</CardTitle>
+                <UserCheck className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{dossiersAutorises.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  Dossiers auxquels vous avez accès
+                </p>
+              </CardContent>
+            </Card>
 
-        {/* Affichage des Dossiers */}
-        {dossiers.length > 0 && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total dossiers</CardTitle>
+                <Shield className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{dossiers.length + dossiersAutorises.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  Accès total
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Actions Rapides */}
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center">
-                <FileText className="mr-2 h-5 w-5" />
-                Mes Dossiers Médicaux
+                <Plus className="mr-2 h-5 w-5" />
+                Actions Rapides
               </CardTitle>
               <CardDescription>
-                Dossiers auxquels vous avez accès
+                Accédez rapidement aux fonctionnalités principales
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {dossiers.map((dossier, index) => (
-                  <div key={index} className="border rounded-lg p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-semibold">{dossier.titre || dossier.numero}</h3>
-                        <p className="text-sm text-gray-600">{dossier.date}</p>
-                        <p className="text-sm">{dossier.contenu}</p>
-                      </div>
-                      <div className="flex space-x-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleGetDossier(dossier.numero)}
-                          disabled={isLoading}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          Voir
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Button onClick={() => setShowCreateModal(true)} disabled={isLoading} variant="outline" className="h-auto p-4 flex flex-col items-center">
+                  <FileText className="mb-2 h-6 w-6" />
+                  <span>Créer Dossier</span>
+                </Button>
+                <Button onClick={() => setShowAccessModal(true)} disabled={isLoading} variant="outline" className="h-auto p-4 flex flex-col items-center">
+                  <UserCheck className="mb-2 h-6 w-6" />
+                  <span>Demander Accès</span>
+                </Button>
+                <Button onClick={handleGetMedecinDossiers} disabled={isLoading} variant="outline" className="h-auto p-4 flex flex-col items-center">
+                  <Eye className="mb-2 h-6 w-6" />
+                  <span>Mes Dossiers</span>
+                </Button>
+                <Button onClick={() => router.push("/dashboard/medecin/patients")} disabled={isLoading} variant="outline" className="h-auto p-4 flex flex-col items-center">
+                  <Users className="mb-2 h-6 w-6" />
+                  <span>Mes Patients</span>
+                </Button>
               </div>
             </CardContent>
           </Card>
-        )}
 
-        {/* Affichage des Demandes d'Accès */}
-        {demandesAcces.length > 0 && (
+          {/* Affichage des Dossiers Créés */}
+          {dossiers.length > 0 && (
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <FileText className="mr-2 h-5 w-5" />
+                  Dossiers que j'ai créés
+                </CardTitle>
+                <CardDescription>
+                  Dossiers médicaux que vous avez créés
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {dossiers.map((dossier, index) => (
+                    <div key={index} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-semibold">{dossier.titre || dossier.numeroDossier}</h3>
+                          <p className="text-sm text-gray-600">Patient: {dossier.patient?.nom} {dossier.patient?.prenom}</p>
+                          <p className="text-sm text-gray-500">Créé le: {new Date(dossier.createdAt).toLocaleDateString()}</p>
+                          <p className="text-sm mt-1">{dossier.contenu}</p>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleGetDossier(dossier.numeroDossier)}
+                            disabled={isLoading}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            Voir
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Affichage des Dossiers Autorisés */}
+          {dossiersAutorises.length > 0 && (
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <UserCheck className="mr-2 h-5 w-5" />
+                  Dossiers auxquels j'ai accès
+                </CardTitle>
+                <CardDescription>
+                  Dossiers pour lesquels vous avez reçu une autorisation
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {dossiersAutorises.map((dossier, index) => (
+                    <div key={index} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-semibold">{dossier.titre || dossier.numeroDossier}</h3>
+                          <p className="text-sm text-gray-600">Patient: {dossier.patient?.nom} {dossier.patient?.prenom}</p>
+                          <p className="text-sm text-gray-500">Accès autorisé</p>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleGetDossier(dossier.numeroDossier)}
+                            disabled={isLoading}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            Voir
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Upload de Fichier */}
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center">
-                <UserCheck className="mr-2 h-5 w-5" />
-                Demandes d'Accès
+                <Upload className="mr-2 h-5 w-5" />
+                Upload de Fichier
               </CardTitle>
               <CardDescription>
-                Demandes en attente de votre validation
+                Ajoutez un fichier à un dossier médical
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {demandesAcces.map((demande, index) => (
-                  <div key={index} className="border rounded-lg p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-semibold">{demande.patient?.nom} {demande.patient?.prenom}</h3>
-                        <p className="text-sm text-gray-600">{demande.motif}</p>
-                        <p className="text-sm text-gray-500">Dossier: {demande.numeroDossier}</p>
-                      </div>
-                      <div className="flex space-x-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            // Logique pour accepter la demande
-                          }}
-                          disabled={isLoading}
-                        >
-                          <UserCheck className="h-4 w-4 mr-1" />
-                          Accepter
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            // Logique pour refuser la demande
-                          }}
-                          disabled={isLoading}
-                        >
-                          <UserX className="h-4 w-4 mr-1" />
-                          Refuser
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div className="flex items-center space-x-4">
+                <div className="flex-1">
+                  <Label htmlFor="file">Sélectionner un fichier</Label>
+                  <Input
+                    id="file"
+                    type="file"
+                    onChange={handleFileChange}
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  />
+                </div>
+                <Button 
+                  onClick={() => dossiers.length > 0 && handleUploadFichier(dossiers[0].numeroDossier)} 
+                  disabled={!selectedFile || isLoading || dossiers.length === 0}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Uploader
+                </Button>
               </div>
             </CardContent>
           </Card>
-        )}
 
-        {/* Upload de Fichier */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Upload className="mr-2 h-5 w-5" />
-              Upload de Fichier
-            </CardTitle>
-            <CardDescription>
-              Ajoutez un fichier à un dossier médical
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center space-x-4">
-              <div className="flex-1">
-                <Label htmlFor="file">Sélectionner un fichier</Label>
-                <Input
-                  id="file"
-                  type="file"
-                  onChange={handleFileChange}
-                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                />
-              </div>
-              <Button 
-                onClick={handleUploadFichier} 
-                disabled={!selectedFile || isLoading}
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                Uploader
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Modal Création Dossier */}
-        {showCreateModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg max-w-md w-full p-6">
-              <h2 className="text-xl font-semibold mb-4">Créer un Dossier</h2>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="titre">Titre</Label>
-                  <Input
-                    id="titre"
-                    value={createForm.titre}
-                    onChange={(e) => setCreateForm({...createForm, titre: e.target.value})}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="contenu">Contenu</Label>
-                  <textarea
-                    id="contenu"
-                    value={createForm.contenu}
-                    onChange={(e) => setCreateForm({...createForm, contenu: e.target.value})}
-                    className="w-full p-2 border rounded-md"
-                    rows={4}
-                  />
-                </div>
-                <div className="flex space-x-2">
-                  <Button onClick={handleCreateDossier} disabled={isLoading} className="flex-1">
-                    {isLoading ? "Création..." : "Créer"}
-                  </Button>
-                  <Button onClick={() => setShowCreateModal(false)} variant="outline" className="flex-1">
-                    Annuler
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Modal Demande Accès */}
-        {showAccessModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg max-w-md w-full p-6">
-              <h2 className="text-xl font-semibold mb-4">Demander Accès</h2>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="codePatient">Code Patient</Label>
-                  <Input
-                    id="codePatient"
-                    value={accessForm.codePatient}
-                    onChange={(e) => setAccessForm({...accessForm, codePatient: e.target.value})}
-                    placeholder="Ex: PAT-001"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="motif">Motif</Label>
-                  <textarea
-                    id="motif"
-                    value={accessForm.motif}
-                    onChange={(e) => setAccessForm({...accessForm, motif: e.target.value})}
-                    className="w-full p-2 border rounded-md"
-                    rows={3}
-                    placeholder="Motif de la demande d'accès"
-                  />
-                </div>
-                <div className="flex space-x-2">
-                  <Button onClick={handleDemanderAcces} disabled={isLoading} className="flex-1">
-                    {isLoading ? "Envoi..." : "Envoyer"}
-                  </Button>
-                  <Button onClick={() => setShowAccessModal(false)} variant="outline" className="flex-1">
-                    Annuler
-                  </Button>
+          {/* Modal Création Dossier */}
+          {showCreateModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-lg max-w-md w-full p-6">
+                <h2 className="text-xl font-semibold mb-4">Créer un Dossier</h2>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="nom">Nom du patient</Label>
+                    <Input
+                      id="nom"
+                      value={createForm.nom}
+                      onChange={(e) => setCreateForm({...createForm, nom: e.target.value})}
+                      placeholder="Nom de famille"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="prenom">Prénom du patient</Label>
+                    <Input
+                      id="prenom"
+                      value={createForm.prenom}
+                      onChange={(e) => setCreateForm({...createForm, prenom: e.target.value})}
+                      placeholder="Prénom"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="codePatient">Code Patient</Label>
+                    <Input
+                      id="codePatient"
+                      value={createForm.codePatient}
+                      onChange={(e) => setCreateForm({...createForm, codePatient: e.target.value})}
+                      placeholder="Code du patient"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="titre">Titre du dossier</Label>
+                    <Input
+                      id="titre"
+                      value={createForm.titre}
+                      onChange={(e) => setCreateForm({...createForm, titre: e.target.value})}
+                      placeholder="Titre du dossier médical"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="contenu">Contenu</Label>
+                    <textarea
+                      id="contenu"
+                      value={createForm.contenu}
+                      onChange={(e) => setCreateForm({...createForm, contenu: e.target.value})}
+                      className="w-full p-2 border rounded-md"
+                      rows={4}
+                      placeholder="Description médicale, diagnostic, traitement..."
+                    />
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button onClick={handleCreateDossier} disabled={isLoading} className="flex-1">
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Création...
+                        </>
+                      ) : (
+                        "Créer"
+                      )}
+                    </Button>
+                    <Button onClick={() => setShowCreateModal(false)} variant="outline" className="flex-1">
+                      Annuler
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {/* Modal Demande Accès */}
+          {showAccessModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-lg max-w-md w-full p-6">
+                <h2 className="text-xl font-semibold mb-4">Demander Accès à un Dossier</h2>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="codePatientAccess">Code Patient</Label>
+                    <Input
+                      id="codePatientAccess"
+                      value={accessForm.codePatient}
+                      onChange={(e) => setAccessForm({...accessForm, codePatient: e.target.value})}
+                      placeholder="Ex: PAT-001"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="motif">Motif de la demande</Label>
+                    <textarea
+                      id="motif"
+                      value={accessForm.motif}
+                      onChange={(e) => setAccessForm({...accessForm, motif: e.target.value})}
+                      className="w-full p-2 border rounded-md"
+                      rows={3}
+                      placeholder="Motif médical de la demande d'accès"
+                    />
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button onClick={handleDemanderAcces} disabled={isLoading} className="flex-1">
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Envoi...
+                        </>
+                      ) : (
+                        "Envoyer"
+                      )}
+                    </Button>
+                    <Button onClick={() => setShowAccessModal(false)} variant="outline" className="flex-1">
+                      Annuler
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </SecureLayout>
