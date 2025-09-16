@@ -2,468 +2,299 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import Image from "next/image"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { 
-  Users, 
-  Settings, 
-  Shield, 
-  Search, 
-  Crown,
-  Database,
-  LogOut
-} from "lucide-react"
-import { 
-  logout as apiLogout,
-  getMedecins,
-  searchMedecins,
-  getUtilisateurs,
-  getLogs
-} from "@/lib/api"
+import { Users, UserCheck, Activity, LogOut, Shield, Crown } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { logout as apiLogout, getUtilisateurs, getLogs } from "@/lib/api"
+import { useAuth } from "@/hooks/useAuth"
+import SecureLayout from "@/components/SecureLayout"
 
 export default function SuperAdminDashboardPage() {
-  const [user, setUser] = useState<any>(null)
-  const [error, setError] = useState("")
-  const [success, setSuccess] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
+  const { user } = useAuth()
+  const [logoutError, setLogoutError] = useState("")
   const [isLoggingOut, setIsLoggingOut] = useState(false)
-  const router = useRouter()
-
-  // États pour les données
-  const [medecins, setMedecins] = useState<any[]>([])
   const [utilisateurs, setUtilisateurs] = useState<any[]>([])
   const [logs, setLogs] = useState<any[]>([])
-  const [searchTerm, setSearchTerm] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
+  const router = useRouter()
 
-  // Charger les données au montage du composant
   useEffect(() => {
-    loadInitialData()
+    loadData()
   }, [])
 
-  const loadInitialData = async () => {
+  const loadData = async () => {
     setIsLoading(true)
     try {
-      // Charger les médecins
-      await handleGetMedecins()
-      // Charger les utilisateurs
-      await handleGetUtilisateurs()
+      // Charger tous les utilisateurs
+      const utilisateursResponse = await getUtilisateurs()
+      setUtilisateurs((utilisateursResponse as any) || [])
+      
       // Charger les logs
-      await handleGetLogs()
-    } catch (err) {
-      console.error("Erreur lors du chargement des données:", err)
+      const logsResponse = await getLogs()
+      setLogs((logsResponse as any) || [])
+    } catch (err: any) {
+      setError(err?.message || "Erreur lors du chargement des données")
     } finally {
       setIsLoading(false)
     }
   }
 
   const handleLogout = async () => {
+    setLogoutError("")
     setIsLoggingOut(true)
     try {
       await apiLogout()
-      localStorage.removeItem("token")
-      localStorage.removeItem("user")
       router.push("/login")
-    } catch (error) {
-      console.error("Erreur lors de la déconnexion:", error)
-      setError("Échec de la déconnexion. Veuillez réessayer.")
-    } finally {
+    } catch (err: any) {
+      setLogoutError(err?.message || "Erreur lors de la déconnexion")
       setIsLoggingOut(false)
     }
   }
 
-  // Route: GET /admin/medecins
-  const handleGetMedecins = async () => {
-    setError("")
-    setSuccess("")
-    setIsLoading(true)
-
-    try {
-      const response = await getMedecins()
-      setMedecins((response as any)?.medecins || [])
-      setSuccess(`Liste des médecins récupérée: ${(response as any)?.medecins?.length || 0} médecins`)
-    } catch (err: any) {
-      const message = err?.message || "Échec de la récupération des médecins"
-      setError(message)
-    } finally {
-      setIsLoading(false)
+  const getStatsByRole = () => {
+    const stats = {
+      patients: 0,
+      medecins: 0,
+      adminHopital: 0,
+      superAdmin: 0,
+      total: utilisateurs.length
     }
-  }
-
-  // Route: GET /admin/medecins/search
-  const handleSearchMedecins = async () => {
-    if (!searchTerm.trim()) return
     
-    setError("")
-    setSuccess("")
-    setIsLoading(true)
-
-    try {
-      const response = await searchMedecins({ q: searchTerm })
-      setSuccess(`Recherche terminée: ${(response as any)?.length || 0} résultats`)
-      setIsLoading(false)
-    } catch (err: any) {
-      const message = err?.message || "Échec de la recherche"
-      setError(message)
-      setIsLoading(false)
-    }
+    utilisateurs.forEach(user => {
+      switch (user.role) {
+        case "PATIENT":
+          stats.patients++
+          break
+        case "MEDECIN":
+          stats.medecins++
+          break
+        case "ADMIN_HOPITAL":
+          stats.adminHopital++
+          break
+        case "SUPER_ADMIN":
+          stats.superAdmin++
+          break
+      }
+    })
+    
+    return stats
   }
 
-  // Route: GET /admin/utilisateurs
-  const handleGetUtilisateurs = async () => {
-    setError("")
-    setSuccess("")
-    setIsLoading(true)
-
-    try {
-      const response = await getUtilisateurs()
-      setUtilisateurs((response as any)?.utilisateurs || [])
-      setSuccess(`Liste des utilisateurs récupérée: ${(response as any)?.utilisateurs?.length || 0} utilisateurs`)
-    } catch (err: any) {
-      const message = err?.message || "Échec de la récupération des utilisateurs"
-      setError(message)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  // Route: GET /admin/logs
-  const handleGetLogs = async () => {
-    setError("")
-    setSuccess("")
-    setIsLoading(true)
-
-    try {
-      const response = await getLogs()
-      setLogs((response as any)?.logs || [])
-      setSuccess(`Logs récupérés: ${(response as any)?.logs?.length || 0} entrées`)
-    } catch (err: any) {
-      const message = err?.message || "Échec de la récupération des logs"
-      setError(message)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const getStatusBadge = (statut: string) => {
-    switch (statut) {
-      case "Validé":
-      case "Actif":
-        return <Badge className="bg-green-100 text-green-800">Validé</Badge>
-      case "En attente":
-        return <Badge className="bg-yellow-100 text-yellow-800">En attente</Badge>
-      case "Inactif":
-        return <Badge className="bg-red-100 text-red-800">Inactif</Badge>
-      default:
-        return <Badge variant="secondary">{statut}</Badge>
-    }
-  }
+  const stats = getStatsByRole()
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              <Image
-                src="/images/healthsafe-logo.png"
-                alt="HealthSafe Logo"
-                width={32}
-                height={32}
-                className="w-8 h-8"
-              />
-              <span className="text-xl font-semibold text-gray-900">HealthSafe - Super Admin</span>
+    <SecureLayout allowedRoles={["SUPER_ADMIN"]}>
+      <div className="min-h-screen bg-background p-4">
+        <div className="max-w-6xl mx-auto space-y-6">
+          {logoutError && (
+            <Alert variant="destructive">
+              <AlertDescription>{logoutError}</AlertDescription>
+            </Alert>
+          )}
+          
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Super Administration</h1>
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-muted-foreground">Bienvenue, {user?.firstName} {user?.lastName}</p>
+                <Badge variant="default">
+                  <Crown className="mr-1 h-3 w-3" />
+                  Super Admin
+                </Badge>
+              </div>
             </div>
-
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">
-                {user?.prenom} {user?.nom} - Super Administrateur
-              </span>
-              <Button
-                onClick={handleLogout}
-                variant="outline"
-                size="sm"
-                disabled={isLoggingOut}
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                {isLoggingOut ? "Déconnexion..." : "Déconnexion"}
-              </Button>
-            </div>
+            <Button onClick={handleLogout} variant="outline" disabled={isLoggingOut}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Déconnexion
+            </Button>
           </div>
-        </div>
-      </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {error && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-        {success && (
-          <Alert className="mb-6">
-            <AlertDescription>{success}</AlertDescription>
-          </Alert>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Sidebar */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* Profil Super Admin */}
+          {/* Stats Cards */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Crown className="h-5 w-5" />
-                  <span>Mon Profil</span>
-                </CardTitle>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Utilisateurs</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label className="text-sm font-medium text-gray-600">Nom complet</Label>
-                  <p className="text-gray-900">{user?.prenom} {user?.nom}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-600">Email</Label>
-                  <p className="text-gray-900">{user?.email}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-600">Rôle</Label>
-                  <p className="text-gray-900">Super Administrateur</p>
-                </div>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.total}</div>
+                <p className="text-xs text-muted-foreground">
+                  Tous rôles confondus
+                </p>
               </CardContent>
             </Card>
 
-            {/* Actions Rapides */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Patients</CardTitle>
+                <UserCheck className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.patients}</div>
+                <p className="text-xs text-muted-foreground">
+                  Patients enregistrés
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Médecins</CardTitle>
+                <Activity className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.medecins}</div>
+                <p className="text-xs text-muted-foreground">
+                  Médecins actifs
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Admins Hôpital</CardTitle>
+                <Shield className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.adminHopital}</div>
+                <p className="text-xs text-muted-foreground">
+                  Administrateurs
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Logs Système</CardTitle>
+                <Activity className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{logs.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  Entrées de log
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="grid gap-6 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Settings className="h-5 w-5" />
-                  <span>Actions Rapides</span>
-                </CardTitle>
+                <CardTitle>Actions Super Admin</CardTitle>
+                <CardDescription>Gestion des administrateurs et validation</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <Button 
-                  onClick={handleGetMedecins} 
-                  className="w-full"
-                  disabled={isLoading}
+                  onClick={() => router.push("/admin/super/promote")} 
+                  className="w-full justify-start"
                 >
-                  <Users className="h-4 w-4 mr-2" />
-                  Liste médecins
+                  <Shield className="mr-2 h-4 w-4" />
+                  Promouvoir un médecin en admin
                 </Button>
-
-                <Button 
-                  onClick={handleGetUtilisateurs} 
+                <Button
+                  onClick={() => router.push("/admin/super/validate")}
+                  className="w-full justify-start"
                   variant="outline"
-                  className="w-full"
-                  disabled={isLoading}
                 >
-                  <Users className="h-4 w-4 mr-2" />
-                  Liste utilisateurs
+                  <UserCheck className="mr-2 h-4 w-4" />
+                  Valider un admin d'hôpital
                 </Button>
-
-                <Button 
-                  onClick={handleGetLogs} 
+                <Button
+                  onClick={() => router.push("/admin/super/revoke")}
+                  className="w-full justify-start"
                   variant="outline"
-                  className="w-full"
-                  disabled={isLoading}
                 >
-                  <Database className="h-4 w-4 mr-2" />
-                  Voir les logs
+                  <Users className="mr-2 h-4 w-4" />
+                  Révoquer un admin
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Gestion Globale</CardTitle>
+                <CardDescription>Vue d'ensemble et gestion des utilisateurs</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Button 
+                  onClick={() => router.push("/admin/users")} 
+                  className="w-full justify-start"
+                >
+                  <Users className="mr-2 h-4 w-4" />
+                  Gérer les utilisateurs
+                </Button>
+                <Button 
+                  onClick={() => router.push("/admin/logs")} 
+                  className="w-full justify-start"
+                  variant="outline"
+                >
+                  <Activity className="mr-2 h-4 w-4" />
+                  Consulter les logs
                 </Button>
               </CardContent>
             </Card>
           </div>
 
-          {/* Contenu Principal */}
-          <div className="lg:col-span-3 space-y-6">
-            {/* Statistiques */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-4">
-                    <Users className="h-8 w-8 text-blue-600" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Total Médecins</p>
-                      <p className="text-2xl font-bold text-gray-900">{medecins.length}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-4">
-                    <Users className="h-8 w-8 text-green-600" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Total Utilisateurs</p>
-                      <p className="text-2xl font-bold text-gray-900">{utilisateurs.length}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-4">
-                    <Shield className="h-8 w-8 text-purple-600" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Hôpitaux</p>
-                      <p className="text-2xl font-bold text-gray-900">5</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-4">
-                    <Database className="h-8 w-8 text-orange-600" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Logs Système</p>
-                      <p className="text-2xl font-bold text-gray-900">{logs.length}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Recherche Médecins */}
+          {/* Liste des Utilisateurs */}
+          {utilisateurs.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Search className="h-5 w-5" />
-                  <span>Rechercher des Médecins</span>
-                </CardTitle>
+                <CardTitle>Tous les Utilisateurs</CardTitle>
+                <CardDescription>
+                  Vue d'ensemble de tous les utilisateurs du système
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex space-x-3">
-                  <Input
-                    placeholder="Rechercher par nom, spécialité..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button onClick={handleSearchMedecins} disabled={isLoading || !searchTerm.trim()}>
-                    {isLoading ? "Recherche..." : "Rechercher"}
-                  </Button>
+                <div className="space-y-4">
+                  {utilisateurs.slice(0, 10).map((utilisateur, index) => (
+                    <div key={index} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-semibold">
+                            {utilisateur.prenom} {utilisateur.nom}
+                          </h3>
+                          <p className="text-sm text-muted-foreground">
+                            {utilisateur.email}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            ID: {utilisateur.id}
+                          </p>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <Badge variant={
+                            utilisateur.role === "SUPER_ADMIN" ? "default" :
+                            utilisateur.role === "ADMIN_HOPITAL" ? "secondary" :
+                            utilisateur.role === "MEDECIN" ? "outline" : "destructive"
+                          }>
+                            {utilisateur.role}
+                          </Badge>
+                          <Badge variant={utilisateur.actif ? "default" : "secondary"}>
+                            {utilisateur.actif ? "Actif" : "Inactif"}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {utilisateurs.length > 10 && (
+                    <div className="text-center">
+                      <Button 
+                        onClick={() => router.push("/admin/users")}
+                        variant="outline"
+                      >
+                        Voir tous les utilisateurs ({utilisateurs.length})
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
-
-            {/* Médecins */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Users className="h-5 w-5" />
-                  <span>Gestion des Médecins</span>
-                </CardTitle>
-                <CardDescription>
-                  Gérez tous les médecins du système
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nom</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Spécialité</TableHead>
-                      <TableHead>Hôpital</TableHead>
-                      <TableHead>Statut</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {medecins.map((medecin) => (
-                      <TableRow key={medecin.id}>
-                        <TableCell className="font-medium">{medecin.prenom} {medecin.nom}</TableCell>
-                        <TableCell>{medecin.email}</TableCell>
-                        <TableCell>{medecin.specialite}</TableCell>
-                        <TableCell>{medecin.hopital}</TableCell>
-                        <TableCell>{getStatusBadge(medecin.statut)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-
-            {/* Utilisateurs */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Users className="h-5 w-5" />
-                  <span>Gestion des Utilisateurs</span>
-                </CardTitle>
-                <CardDescription>
-                  Gérez tous les utilisateurs du système
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nom</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Rôle</TableHead>
-                      <TableHead>Statut</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {utilisateurs.map((utilisateur) => (
-                      <TableRow key={utilisateur.id}>
-                        <TableCell className="font-medium">{utilisateur.prenom} {utilisateur.nom}</TableCell>
-                        <TableCell>{utilisateur.email}</TableCell>
-                        <TableCell>{utilisateur.role}</TableCell>
-                        <TableCell>{getStatusBadge(utilisateur.statut)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-
-            {/* Logs */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Database className="h-5 w-5" />
-                  <span>Logs Système</span>
-                </CardTitle>
-                <CardDescription>
-                  Historique complet des actions du système
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Action</TableHead>
-                      <TableHead>Utilisateur</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>IP</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {logs.map((log) => (
-                      <TableRow key={log.id}>
-                        <TableCell className="font-medium">{log.action}</TableCell>
-                        <TableCell>{log.utilisateur}</TableCell>
-                        <TableCell>{log.date}</TableCell>
-                        <TableCell>{log.ip}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </div>
+          )}
         </div>
       </div>
-    </div>
+    </SecureLayout>
   )
 }

@@ -32,36 +32,41 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 // --- getMe avec refresh automatique ---
 async function getMe(): Promise<User> {
-  let res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
-    credentials: "include",
-  });
-
-  if (!res.ok && res.status !== 401) {
-    throw new Error(`Erreur serveur: ${res.status}`);
-  }
-
-  if (res.status === 401) {
-    const refreshRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`, {
-      method: "POST",
+  try {
+    let res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
       credentials: "include",
     });
 
-    if (!refreshRes.ok) throw new Error("Utilisateur non authentifié");
+    if (!res.ok && res.status !== 401) {
+      throw new Error(`Erreur serveur: ${res.status}`);
+    }
 
-    res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
-      credentials: "include",
-    });
-    if (!res.ok) throw new Error("Utilisateur non authentifié");
+    if (res.status === 401) {
+      const refreshRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`, {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (!refreshRes.ok) throw new Error("Utilisateur non authentifié");
+
+      res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Utilisateur non authentifié");
+    }
+
+    const data = await res.json();
+    return {
+      id: data.user.id,
+      role: data.user.role,
+      email: data.user.email ?? "",
+      firstName: data.user.firstName ?? "",
+      lastName: data.user.lastName ?? "",
+    };
+  } catch (error) {
+    console.error("Erreur getMe:", error);
+    throw error;
   }
-
-  const data = await res.json();
-  return {
-    id: data.user.id,
-    role: data.user.role,
-    email: data.user.email ?? "",
-    firstName: data.user.firstName ?? "",
-    lastName: data.user.lastName ?? "",
-  };
 }
 
 // --- Provider ---
@@ -77,7 +82,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const me = await getMe();
       setUser(me);
       return me;
-    } catch {
+    } catch (error) {
+      console.error("Erreur d'authentification:", error);
       setUser(null);
       return null;
     } finally {
@@ -95,7 +101,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Erreur logout:", err);
     } finally {
       setUser(null);
-      router.push("/login");
+      if (typeof window !== 'undefined') {
+        router.push("/login");
+      }
     }
   };
 

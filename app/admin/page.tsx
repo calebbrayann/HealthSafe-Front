@@ -16,21 +16,35 @@ export default function AdminDashboardPage() {
   const router = useRouter()
 
   useEffect(() => {
-    const userData = localStorage.getItem("user")
-    if (!userData) {
-      router.push("/login")
-      return
+    // Utiliser le contexte d'authentification au lieu du localStorage
+    const checkUser = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
+          credentials: 'include',
+        })
+        
+        if (!response.ok) {
+          router.push("/login")
+          return
+        }
+        
+        const data = await response.json()
+        const userData = data.user
+        
+        // Vérifier que l'utilisateur a les droits d'admin
+        if (!["SUPER_ADMIN", "ADMIN_HOPITAL"].includes(userData.role)) {
+          router.push("/dashboard")
+          return
+        }
+        
+        setUser(userData)
+      } catch (error) {
+        console.error("Erreur lors de la vérification de l'utilisateur:", error)
+        router.push("/login")
+      }
     }
-
-    const parsedUser = JSON.parse(userData)
-    // Mock admin role assignment
-    if (parsedUser.email.includes("admin")) {
-      parsedUser.role = "SUPER_ADMIN"
-    } else if (parsedUser.email.includes("hopital")) {
-      parsedUser.role = "ADMIN_HOPITAL"
-    }
-
-    setUser(parsedUser)
+    
+    checkUser()
   }, [router])
 
   const handleLogout = async () => {
@@ -38,8 +52,6 @@ export default function AdminDashboardPage() {
     setIsLoggingOut(true)
     try {
       await apiLogout()
-      localStorage.removeItem("token")
-      localStorage.removeItem("user")
       router.push("/login")
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Échec de la déconnexion. Veuillez réessayer."

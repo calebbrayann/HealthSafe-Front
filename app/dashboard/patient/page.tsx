@@ -27,7 +27,8 @@ import {
   getAutorisations,
   getDossier,
   getDossierHistorique,
-  uploadFichier
+  uploadFichier,
+  listeAcces
 } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -99,7 +100,17 @@ export default function PatientDashboardPage() {
     setSuccess("");
     setIsLoading(true);
     try {
-      const response = await getPatientDossiers({});
+      // Utiliser les données de l'utilisateur connecté
+      if (!user) {
+        setError("Utilisateur non connecté");
+        return;
+      }
+      
+      const response = await getPatientDossiers({
+        nom: user.lastName || "",
+        prenom: user.firstName || "",
+        codePatient: user.codePatient || ""
+      });
       setDossiers((response as any)?.dossiers || []);
       setSuccess("Dossiers récupérés avec succès");
     } catch (err: any) {
@@ -114,9 +125,9 @@ export default function PatientDashboardPage() {
     setSuccess("");
     setIsLoading(true);
     try {
-      // Récupérer les autorisations pour tous les dossiers du patient
-      const response = await getAutorisations("all");
-      setAutorisations((response as any)?.autorisations || []);
+      // Utiliser l'API listeAcces pour récupérer les autorisations du patient
+      const response = await listeAcces();
+      setAutorisations((response as any) || []);
       setSuccess("Autorisations récupérées avec succès");
     } catch (err: any) {
       setError(err?.message || "Erreur lors de la récupération des autorisations");
