@@ -35,7 +35,7 @@ export default function PatientDashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
 
-  const [patientCode, setPatientCode] = useState<string>("123456");
+  const [patientCode, setPatientCode] = useState<string>("");
   const [selectedRecord, setSelectedRecord] = useState<any>(null);
   const [logoutError, setLogoutError] = useState("");
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -45,6 +45,25 @@ export default function PatientDashboardPage() {
   const [dossiers, setDossiers] = useState<any[]>([]);
   const [autorisations, setAutorisations] = useState<any[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  // Charger les données au montage du composant
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  const loadInitialData = async () => {
+    setIsLoading(true);
+    try {
+      // Charger les dossiers du patient
+      await handleGetPatientDossiers();
+      // Charger les autorisations
+      await handleGetAutorisations();
+    } catch (err) {
+      console.error("Erreur lors du chargement des données:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // ------------------------ Handlers ------------------------
 
@@ -95,8 +114,8 @@ export default function PatientDashboardPage() {
     setSuccess("");
     setIsLoading(true);
     try {
-      const numeroDossier = "DOS-001";
-      const response = await getAutorisations(numeroDossier);
+      // Récupérer les autorisations pour tous les dossiers du patient
+      const response = await getAutorisations("all");
       setAutorisations((response as any)?.autorisations || []);
       setSuccess("Autorisations récupérées avec succès");
     } catch (err: any) {
@@ -106,12 +125,11 @@ export default function PatientDashboardPage() {
     }
   };
 
-  const handleGetDossier = async () => {
+  const handleGetDossier = async (numeroDossier: string) => {
     setError("");
     setSuccess("");
     setIsLoading(true);
     try {
-      const numeroDossier = "DOS-001";
       const response = await getDossier(numeroDossier);
       setSelectedRecord(response);
       setSuccess("Dossier récupéré avec succès");
@@ -122,12 +140,11 @@ export default function PatientDashboardPage() {
     }
   };
 
-  const handleGetDossierHistorique = async () => {
+  const handleGetDossierHistorique = async (numeroDossier: string) => {
     setError("");
     setSuccess("");
     setIsLoading(true);
     try {
-      const numeroDossier = "DOS-001";
       await getDossierHistorique(numeroDossier);
       setSuccess("Historique récupéré avec succès");
     } catch (err: any) {
@@ -141,7 +158,7 @@ export default function PatientDashboardPage() {
     if (e.target.files && e.target.files[0]) setSelectedFile(e.target.files[0]);
   };
 
-  const handleUploadFichier = async () => {
+  const handleUploadFichier = async (numeroDossier: string) => {
     if (!selectedFile) {
       setError("Veuillez sélectionner un fichier");
       return;
@@ -150,7 +167,6 @@ export default function PatientDashboardPage() {
     setSuccess("");
     setIsLoading(true);
     try {
-      const numeroDossier = "DOS-001";
       const formData = new FormData();
       formData.append("fichier", selectedFile);
       await uploadFichier(numeroDossier, formData);
@@ -166,7 +182,7 @@ export default function PatientDashboardPage() {
   // ------------------------ Render ------------------------
 
   return (
-    <SecureLayout>
+    <SecureLayout allowedRoles={["PATIENT"]}>
       <div className="min-h-screen bg-gray-50 p-4">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
@@ -255,11 +271,11 @@ export default function PatientDashboardPage() {
                   <Users className="mb-2 h-6 w-6" />
                   <span>Autorisations</span>
                 </Button>
-                <Button onClick={handleGetDossier} disabled={isLoading} variant="outline" className="h-auto p-4 flex flex-col items-center">
+                <Button onClick={() => dossiers.length > 0 && handleGetDossier(dossiers[0].numero)} disabled={isLoading || dossiers.length === 0} variant="outline" className="h-auto p-4 flex flex-col items-center">
                   <Eye className="mb-2 h-6 w-6" />
                   <span>Voir Dossier</span>
                 </Button>
-                <Button onClick={handleGetDossierHistorique} disabled={isLoading} variant="outline" className="h-auto p-4 flex flex-col items-center">
+                <Button onClick={() => dossiers.length > 0 && handleGetDossierHistorique(dossiers[0].numero)} disabled={isLoading || dossiers.length === 0} variant="outline" className="h-auto p-4 flex flex-col items-center">
                   <History className="mb-2 h-6 w-6" />
                   <span>Historique</span>
                 </Button>
@@ -290,8 +306,8 @@ export default function PatientDashboardPage() {
                   />
                 </div>
                 <Button 
-                  onClick={handleUploadFichier} 
-                  disabled={!selectedFile || isLoading}
+                  onClick={() => dossiers.length > 0 && handleUploadFichier(dossiers[0].numero)} 
+                  disabled={!selectedFile || isLoading || dossiers.length === 0}
                 >
                   <Upload className="mr-2 h-4 w-4" />
                   Uploader

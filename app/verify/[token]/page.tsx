@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, XCircle, Loader2 } from "lucide-react"
 import { verifyEmail } from "@/lib/api"
+import { useAuth } from "@/hooks/useAuth"
 import Image from "next/image"
 
 export default function VerifyEmailPage() {
@@ -16,6 +17,7 @@ export default function VerifyEmailPage() {
   const router = useRouter()
   const params = useParams()
   const token = params.token as string
+  const { refreshUser } = useAuth()
 
   useEffect(() => {
     const verifyToken = async () => {
@@ -30,6 +32,9 @@ export default function VerifyEmailPage() {
         setStatus("success")
         setMessage((response as any)?.message || "Email vérifié avec succès")
         setUserRole((response as any)?.role || "")
+        
+        // Rafraîchir les données utilisateur dans le contexte d'authentification
+        await refreshUser()
         
         // Redirection selon le rôle
         setTimeout(() => {

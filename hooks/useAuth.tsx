@@ -19,6 +19,10 @@ export interface AuthContextType {
   initialLoading: boolean;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  isPatient: boolean;
+  isMedecin: boolean;
+  isAdminHopital: boolean;
+  isSuperAdmin: boolean;
   logout: () => Promise<void>;
   refreshUser: () => Promise<User | null>;
 }
@@ -112,6 +116,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         initialLoading,
         isAuthenticated: !!user,
         isAdmin: user?.role === "ADMIN",
+        isPatient: user?.role === "PATIENT",
+        isMedecin: user?.role === "MEDECIN",
+        isAdminHopital: user?.role === "ADMIN_HOPITAL",
+        isSuperAdmin: user?.role === "SUPER_ADMIN",
         logout,
         refreshUser,
       }}
