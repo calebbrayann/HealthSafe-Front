@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react"; // ✅ CORRECTION: useEffect ajouté
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,11 +24,10 @@ import {
   logout as apiLogout,
   resetCodePatient,
   getPatientDossiers,
-  getAutorisations,
+  getPatientAutorisations, // ✅ CORRECTION: API dédiée pour les autorisations patient
   getDossier,
   getDossierHistorique,
-  uploadFichier,
-  listeAcces
+  uploadFichier
 } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -36,7 +35,7 @@ export default function PatientDashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
 
-  const [patientCode, setPatientCode] = useState<string>("");
+  const [patientCode, setPatientCode] = useState<string>(user?.codePatient || "");
   const [selectedRecord, setSelectedRecord] = useState<any>(null);
   const [logoutError, setLogoutError] = useState("");
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -49,10 +48,15 @@ export default function PatientDashboardPage() {
 
   // Charger les données au montage du composant
   useEffect(() => {
+    if (user?.codePatient) {
+      setPatientCode(user.codePatient);
+    }
     loadInitialData();
-  }, []);
+  }, [user]);
 
   const loadInitialData = async () => {
+    if (!user) return;
+    
     setIsLoading(true);
     try {
       // Charger les dossiers du patient
@@ -61,6 +65,7 @@ export default function PatientDashboardPage() {
       await handleGetAutorisations();
     } catch (err) {
       console.error("Erreur lors du chargement des données:", err);
+      setError("Erreur lors du chargement des données");
     } finally {
       setIsLoading(false);
     }
@@ -87,7 +92,9 @@ export default function PatientDashboardPage() {
     try {
       const response = await resetCodePatient({});
       setSuccess((response as any)?.message || "Code secret réinitialisé avec succès");
-      if ((response as any)?.nouveauCode) setPatientCode((response as any).nouveauCode);
+      if ((response as any)?.nouveauCode) {
+        setPatientCode((response as any).nouveauCode);
+      }
     } catch (err: any) {
       setError(err?.message || "Erreur lors de la réinitialisation du code");
     } finally {
@@ -100,7 +107,6 @@ export default function PatientDashboardPage() {
     setSuccess("");
     setIsLoading(true);
     try {
-      // Utiliser les données de l'utilisateur connecté
       if (!user) {
         setError("Utilisateur non connecté");
         return;
@@ -125,8 +131,8 @@ export default function PatientDashboardPage() {
     setSuccess("");
     setIsLoading(true);
     try {
-      // Utiliser l'API listeAcces pour récupérer les autorisations du patient
-      const response = await listeAcces();
+      // ✅ CORRECTION: Utiliser une API dédiée pour les autorisations patient
+      const response = await getPatientAutorisations();
       setAutorisations((response as any) || []);
       setSuccess("Autorisations récupérées avec succès");
     } catch (err: any) {
@@ -337,9 +343,22 @@ export default function PatientDashboardPage() {
                 <div className="space-y-4">
                   {dossiers.map((dossier, index) => (
                     <div key={index} className="border rounded-lg p-4">
-                      <h3 className="font-semibold">{dossier.titre || dossier.numero}</h3>
-                      <p className="text-sm text-gray-600">{dossier.date}</p>
-                      <p className="text-sm">{dossier.contenu}</p>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-semibold">{dossier.titre || dossier.numero}</h3>
+                          <p className="text-sm text-gray-600">{dossier.date}</p>
+                          <p className="text-sm">{dossier.contenu}</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleGetDossier(dossier.numero)}
+                          disabled={isLoading}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Voir
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -352,16 +371,25 @@ export default function PatientDashboardPage() {
             <Card className="mb-6">
               <CardHeader>
                 <CardTitle>Autorisations d'Accès</CardTitle>
+                <CardDescription>
+                  Médecins autorisés à accéder à vos dossiers
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {autorisations.map((auth, index) => (
                     <div key={index} className="border rounded-lg p-4">
-                      <h3 className="font-semibold">{auth.medecin?.nom} {auth.medecin?.prenom}</h3>
-                      <p className="text-sm text-gray-600">{auth.medecin?.email}</p>
-                      <Badge variant={auth.statut === 'ACTIVE' ? 'default' : 'secondary'}>
-                        {auth.statut}
-                      </Badge>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-semibold">Dr. {auth.medecin?.nom} {auth.medecin?.prenom}</h3>
+                          <p className="text-sm text-gray-600">{auth.medecin?.email}</p>
+                          <p className="text-sm text-gray-500">Licence: {auth.medecin?.numeroLicence}</p>
+                          <p className="text-sm text-gray-500">Dossier: {auth.dossier?.numero}</p>
+                        </div>
+                        <Badge variant="default">
+                          Autorisé
+                        </Badge>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -379,7 +407,7 @@ export default function PatientDashboardPage() {
                 <div className="border rounded-lg p-4">
                   <h3 className="font-semibold">{selectedRecord.titre || selectedRecord.numero}</h3>
                   <p className="text-sm text-gray-600">{selectedRecord.date}</p>
-                  <p className="text-sm">{selectedRecord.contenu}</p>
+                  <p className="text-sm mt-2">{selectedRecord.contenu}</p>
                 </div>
               </CardContent>
             </Card>
