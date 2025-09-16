@@ -38,6 +38,7 @@ import {
 } from "@/lib/api"
 import { useAuth } from "@/hooks/useAuth"
 import SecureLayout from "@/components/SecureLayout"
+import LogoutErrorHandler from "@/components/LogoutErrorHandler"
 
 export default function MedecinDashboardPage() {
   const { user, logout: authLogout } = useAuth()
@@ -89,7 +90,39 @@ export default function MedecinDashboardPage() {
     try {
       await authLogout()
     } catch (err: any) {
-      setLogoutError(err?.message || "Erreur lors de la déconnexion")
+      const errorMessage = err?.message || "Erreur lors de la déconnexion"
+      setLogoutError(errorMessage)
+      console.error("Erreur de déconnexion:", err)
+    } finally {
+      setIsLoggingOut(false)
+    }
+  }
+
+  const handleRetryLogout = async () => {
+    setLogoutError("")
+    await handleLogout()
+  }
+
+  const handleForceLogout = async () => {
+    setLogoutError("")
+    setIsLoggingOut(true)
+    try {
+      // Déconnexion forcée - nettoyage côté client uniquement
+      if (typeof window !== 'undefined') {
+        localStorage.clear()
+        sessionStorage.clear()
+        // Nettoyage des cookies
+        document.cookie.split(";").forEach((cookie) => {
+          const eqPos = cookie.indexOf("=")
+          const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim()
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`
+        })
+      }
+      router.push("/login")
+    } catch (err) {
+      console.error("Erreur lors de la déconnexion forcée:", err)
+      router.push("/login")
+    } finally {
       setIsLoggingOut(false)
     }
   }
@@ -231,17 +264,29 @@ export default function MedecinDashboardPage() {
             </div>
           </div>
 
-          {/* Messages d'erreur et de succès */}
-          {error && (
-            <Alert className="mb-4 border-destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          {success && (
-            <Alert className="mb-4 border-secondary">
-              <AlertDescription>{success}</AlertDescription>
-            </Alert>
-          )}
+        {/* Messages d'erreur et de succès */}
+        {error && (
+          <Alert className="mb-4 border-destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+        {success && (
+          <Alert className="mb-4 border-secondary">
+            <AlertDescription>{success}</AlertDescription>
+          </Alert>
+        )}
+
+        {/* Gestionnaire d'erreur de déconnexion */}
+        {logoutError && (
+          <div className="mb-4">
+            <LogoutErrorHandler
+              error={logoutError}
+              onRetry={handleRetryLogout}
+              onForceLogout={handleForceLogout}
+              showDetails={true}
+            />
+          </div>
+        )}
 
           {/* Statistiques */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">

@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { cleanupClientAuth, logoutWithRetry } from "@/lib/logout-utils";
 
 // --- Types ---
 export interface User {
@@ -92,20 +93,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
+    const logoutFunction = async () => {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
         method: "POST",
         credentials: "include",
       });
+
+      if (!response.ok) {
+        throw new Error(`Erreur serveur: ${response.status}`);
+      }
+
+      return response;
+    };
+
+    try {
+      // Utiliser la fonction de déconnexion avec retry et fallback
+      const result = await logoutWithRetry(logoutFunction, 3, 1000);
+      
+      if (result.fallback) {
+        console.warn("Déconnexion effectuée via fallback côté client");
+      }
     } catch (err) {
-      console.error("Erreur logout:", err);
+      console.error("Erreur critique lors de la déconnexion:", err);
     } finally {
+      // Nettoyage côté client systématique
+      cleanupClientAuth();
+      
+      // Mise à jour de l'état local
       setUser(null);
+      
+      // Redirection vers la page de connexion
       if (typeof window !== 'undefined') {
         router.push("/login");
       }
     }
   };
+
 
   const refreshUser = async (): Promise<User | null> => {
     return await checkAuth();
