@@ -34,7 +34,42 @@ export default function LoginPage() {
 
   useEffect(() => {
     console.log("API URL:", process.env.NEXT_PUBLIC_API_URL);
-  }, []);
+    
+    // Vérifier si l'utilisateur est déjà connecté
+    const checkExistingAuth = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
+          credentials: 'include',
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const userRole = data.user?.role;
+          
+          // Rediriger vers le dashboard approprié
+          switch (userRole) {
+            case "PATIENT":
+              router.push("/dashboard/patient");
+              break;
+            case "MEDECIN":
+              router.push("/dashboard/medecin");
+              break;
+            case "ADMIN_HOPITAL":
+              router.push("/dashboard/admin-hopital");
+              break;
+            case "SUPER_ADMIN":
+              router.push("/dashboard/super-admin");
+              break;
+          }
+        }
+      } catch (error) {
+        // L'utilisateur n'est pas connecté, continuer normalement
+        console.log("Utilisateur non connecté");
+      }
+    };
+    
+    checkExistingAuth();
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

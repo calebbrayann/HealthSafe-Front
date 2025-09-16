@@ -61,7 +61,7 @@ export default function Header() {
                 </Link>
                 <div className="flex items-center space-x-4">
                   <span className="text-sm text-gray-600">
-                    {user?.prenom} {user?.nom} ({user?.role})
+                    {user?.name} ({user?.role})
                   </span>
                   <Button onClick={handleLogout} variant="outline" size="sm">
                     Déconnexion
@@ -126,7 +126,7 @@ export default function Header() {
                   </Link>
                   <div className="px-3 py-2">
                     <span className="text-sm text-gray-600 block mb-2">
-                      {user?.prenom} {user?.nom} ({user?.role})
+                      {user?.email} ({user?.role})
                     </span>
                     <Button onClick={handleLogout} variant="outline" size="sm" className="w-full">
                       Déconnexion

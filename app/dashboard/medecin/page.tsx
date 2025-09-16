@@ -131,7 +131,7 @@ export default function MedecinDashboardPage() {
     try {
       // Récupérer les dossiers du médecin via l'API
       const response = await listeAcces()
-      setDossiers(response.dossiers || [])
+      setDossiers((response as any) || [])
       setSuccess("Dossiers récupérés avec succès")
     } catch (err: any) {
       setError(err?.message || "Erreur lors de la récupération des dossiers")
