@@ -92,80 +92,26 @@ export default function AdminHopitalDashboardPage() {
   const [logs, setLogs] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState("")
 
-  const mockMedecins = [
-    {
-      id: "1",
-      nom: "Dr. Martin",
-      prenom: "Jean",
-      email: "dr.jean.martin@hopital.fr",
-      specialite: "Cardiologie",
-      statut: "En attente",
-      hopital: "Hôpital Central",
-    },
-    {
-      id: "2",
-      nom: "Dr. Dubois",
-      prenom: "Marie",
-      email: "dr.marie.dubois@hopital.fr",
-      specialite: "Dermatologie",
-      statut: "Validé",
-      hopital: "Hôpital Central",
-    },
-  ]
-
-  const mockUtilisateurs = [
-    {
-      id: "1",
-      nom: "Dupont",
-      prenom: "Jean",
-      email: "jean.dupont@email.com",
-      role: "PATIENT",
-      statut: "Actif",
-    },
-    {
-      id: "2",
-      nom: "Martin",
-      prenom: "Pierre",
-      email: "pierre.martin@email.com",
-      role: "MEDECIN",
-      statut: "Inactif",
-    },
-  ]
-
-  const mockLogs = [
-    {
-      id: "1",
-      action: "Connexion",
-      utilisateur: "dr.jean.martin@hopital.fr",
-      date: "2024-01-15 10:30:00",
-      ip: "192.168.1.100",
-    },
-    {
-      id: "2",
-      action: "Création dossier",
-      utilisateur: "dr.marie.dubois@hopital.fr",
-      date: "2024-01-15 09:15:00",
-      ip: "192.168.1.101",
-    },
-  ]
-
+  // Charger les données au montage du composant
   useEffect(() => {
-    const storedUser = localStorage.getItem("user")
-    if (storedUser) {
-      setUser(JSON.parse(storedUser))
-    } else {
-      setUser({
-        nom: "Admin",
-        prenom: "Hôpital",
-        email: "admin@hopital.fr",
-        role: "ADMIN_HOPITAL",
-        hopital: "Hôpital Central",
-      })
-    }
-    setMedecins(mockMedecins)
-    setUtilisateurs(mockUtilisateurs)
-    setLogs(mockLogs)
+    loadInitialData()
   }, [])
+
+  const loadInitialData = async () => {
+    setIsLoading(true)
+    try {
+      // Charger les médecins
+      await handleGetMedecins()
+      // Charger les utilisateurs
+      await handleGetUtilisateurs()
+      // Charger les logs
+      await handleGetLogs()
+    } catch (err) {
+      console.error("Erreur lors du chargement des données:", err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const handleLogout = async () => {
     setIsLoggingOut(true)
@@ -271,11 +217,12 @@ export default function AdminHopitalDashboardPage() {
 
     try {
       const response = await getMedecins()
-      setSuccess(`Liste des médecins récupérée: ${(response as any)?.length || 0} médecins`)
-      setIsLoading(false)
+      setMedecins((response as any)?.medecins || [])
+      setSuccess(`Liste des médecins récupérée: ${(response as any)?.medecins?.length || 0} médecins`)
     } catch (err: any) {
       const message = err?.message || "Échec de la récupération des médecins"
       setError(message)
+    } finally {
       setIsLoading(false)
     }
   }
@@ -327,11 +274,12 @@ export default function AdminHopitalDashboardPage() {
 
     try {
       const response = await getUtilisateurs()
-      setSuccess(`Liste des utilisateurs récupérée: ${(response as any)?.length || 0} utilisateurs`)
-      setIsLoading(false)
+      setUtilisateurs((response as any)?.utilisateurs || [])
+      setSuccess(`Liste des utilisateurs récupérée: ${(response as any)?.utilisateurs?.length || 0} utilisateurs`)
     } catch (err: any) {
       const message = err?.message || "Échec de la récupération des utilisateurs"
       setError(message)
+    } finally {
       setIsLoading(false)
     }
   }
@@ -361,11 +309,12 @@ export default function AdminHopitalDashboardPage() {
 
     try {
       const response = await getLogs()
-      setSuccess(`Logs récupérés: ${(response as any)?.length || 0} entrées`)
-      setIsLoading(false)
+      setLogs((response as any)?.logs || [])
+      setSuccess(`Logs récupérés: ${(response as any)?.logs?.length || 0} entrées`)
     } catch (err: any) {
       const message = err?.message || "Échec de la récupération des logs"
       setError(message)
+    } finally {
       setIsLoading(false)
     }
   }

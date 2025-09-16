@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Eye, EyeOff, Lock, CheckCircle } from "lucide-react"
 import { resetPassword } from "@/lib/api"
+import { useAuth } from "@/hooks/useAuth"
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("")
@@ -23,6 +24,7 @@ export default function ResetPasswordPage() {
   const router = useRouter()
   const params = useParams()
   const token = params.token as string
+  const { refreshUser } = useAuth()
 
   useEffect(() => {
     if (!token) {
@@ -62,6 +64,9 @@ export default function ResetPasswordPage() {
       setSuccess((response as any)?.message || "Mot de passe réinitialisé avec succès")
       setIsSubmitted(true)
       setIsLoading(false)
+      
+      // Rafraîchir les données utilisateur dans le contexte d'authentification
+      await refreshUser()
       
       // Rediriger vers la page de connexion après 3 secondes
       setTimeout(() => {

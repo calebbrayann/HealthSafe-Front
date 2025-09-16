@@ -20,7 +20,8 @@ import {
   UserCheck,
   UserX,
   Clock,
-  Shield
+  Shield,
+  Loader2
 } from "lucide-react"
 import { 
   logout as apiLogout,
@@ -35,9 +36,11 @@ import {
   revoquerAcces,
   listeAcces
 } from "@/lib/api"
+import { useAuth } from "@/hooks/useAuth"
+import SecureLayout from "@/components/SecureLayout"
 
 export default function MedecinDashboardPage() {
-  const [user, setUser] = useState<any>(null)
+  const { user, logout: authLogout } = useAuth()
   const [logoutError, setLogoutError] = useState("")
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [error, setError] = useState("")
@@ -59,25 +62,30 @@ export default function MedecinDashboardPage() {
   })
   const router = useRouter()
 
+  // Charger les données au montage du composant
   useEffect(() => {
-    const userData = localStorage.getItem("user")
-    if (!userData) {
-      router.push("/login")
-      return
+    loadInitialData()
+  }, [])
+
+  const loadInitialData = async () => {
+    setIsLoading(true)
+    try {
+      // Charger les dossiers du médecin
+      await handleGetDossiers()
+      // Charger les demandes d'accès
+      await handleListeAcces()
+    } catch (err) {
+      console.error("Erreur lors du chargement des données:", err)
+    } finally {
+      setIsLoading(false)
     }
-    const parsedUser = JSON.parse(userData)
-    setUser(parsedUser)
-  }, [router])
+  }
 
   const handleLogout = async () => {
     setLogoutError("")
     setIsLoggingOut(true)
     try {
-      await apiLogout()
-      localStorage.removeItem("token")
-      localStorage.removeItem("userRole")
-      localStorage.removeItem("user")
-      router.push("/login")
+      await authLogout()
     } catch (err: any) {
       setLogoutError(err?.message || "Erreur lors de la déconnexion")
       setIsLoggingOut(false)
@@ -116,17 +124,34 @@ export default function MedecinDashboardPage() {
     }
   }
 
-  const handleGetDossier = async () => {
+  const handleGetDossiers = async () => {
     setError("")
     setSuccess("")
     setIsLoading(true)
     try {
-      const numeroDossier = "DOS-001" // À adapter selon le contexte
+      // Récupérer les dossiers du médecin via l'API
+      const response = await listeAcces()
+      setDossiers(response.dossiers || [])
+      setSuccess("Dossiers récupérés avec succès")
+    } catch (err: any) {
+      setError(err?.message || "Erreur lors de la récupération des dossiers")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleGetDossier = async (numeroDossier: string) => {
+    setError("")
+    setSuccess("")
+    setIsLoading(true)
+    try {
       const response = await getDossier(numeroDossier)
       setSuccess("Dossier récupéré avec succès")
-      setIsLoading(false)
+      return response
     } catch (err: any) {
       setError(err?.message || "Erreur lors de la récupération du dossier")
+      throw err
+    } finally {
       setIsLoading(false)
     }
   }
@@ -196,34 +221,32 @@ export default function MedecinDashboardPage() {
     setIsLoading(true)
     try {
       const response = await listeAcces()
+      setDemandesAcces(response.demandes || [])
       setSuccess("Liste des accès récupérée avec succès")
-      setIsLoading(false)
     } catch (err: any) {
       setError(err?.message || "Erreur lors de la récupération des accès")
+    } finally {
       setIsLoading(false)
     }
   }
 
-  if (!user) {
-    return <div>Chargement...</div>
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Tableau de bord Médecin</h1>
-              <p className="text-gray-600">Bienvenue, Dr. {user.nom} {user.prenom}</p>
+    <SecureLayout allowedRoles={["MEDECIN"]}>
+      <div className="min-h-screen bg-gray-50 p-4">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Tableau de bord Médecin</h1>
+                <p className="text-gray-600">Bienvenue, Dr. {user?.firstName} {user?.lastName}</p>
+              </div>
+              <Button onClick={handleLogout} variant="outline" disabled={isLoggingOut}>
+                <LogOut className="mr-2 h-4 w-4" />
+                {isLoggingOut ? "Déconnexion..." : "Déconnexion"}
+              </Button>
             </div>
-            <Button onClick={handleLogout} variant="outline" disabled={isLoggingOut}>
-              <LogOut className="mr-2 h-4 w-4" />
-              {isLoggingOut ? "Déconnexion..." : "Déconnexion"}
-            </Button>
           </div>
-        </div>
 
         {/* Messages d'erreur et de succès */}
         {error && (
@@ -258,13 +281,13 @@ export default function MedecinDashboardPage() {
                 <UserCheck className="mb-2 h-6 w-6" />
                 <span>Demander Accès</span>
               </Button>
-              <Button onClick={handleGetDossier} disabled={isLoading} variant="outline" className="h-auto p-4 flex flex-col items-center">
+              <Button onClick={handleGetDossiers} disabled={isLoading} variant="outline" className="h-auto p-4 flex flex-col items-center">
                 <Eye className="mb-2 h-6 w-6" />
-                <span>Voir Dossier</span>
+                <span>Mes Dossiers</span>
               </Button>
-              <Button onClick={handleGetDossierHistorique} disabled={isLoading} variant="outline" className="h-auto p-4 flex flex-col items-center">
+              <Button onClick={handleListeAcces} disabled={isLoading} variant="outline" className="h-auto p-4 flex flex-col items-center">
                 <Clock className="mb-2 h-6 w-6" />
-                <span>Historique</span>
+                <span>Demandes</span>
               </Button>
             </div>
           </CardContent>
@@ -294,6 +317,101 @@ export default function MedecinDashboardPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Affichage des Dossiers */}
+        {dossiers.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <FileText className="mr-2 h-5 w-5" />
+                Mes Dossiers Médicaux
+              </CardTitle>
+              <CardDescription>
+                Dossiers auxquels vous avez accès
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {dossiers.map((dossier, index) => (
+                  <div key={index} className="border rounded-lg p-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-semibold">{dossier.titre || dossier.numero}</h3>
+                        <p className="text-sm text-gray-600">{dossier.date}</p>
+                        <p className="text-sm">{dossier.contenu}</p>
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleGetDossier(dossier.numero)}
+                          disabled={isLoading}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Voir
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Affichage des Demandes d'Accès */}
+        {demandesAcces.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <UserCheck className="mr-2 h-5 w-5" />
+                Demandes d'Accès
+              </CardTitle>
+              <CardDescription>
+                Demandes en attente de votre validation
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {demandesAcces.map((demande, index) => (
+                  <div key={index} className="border rounded-lg p-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-semibold">{demande.patient?.nom} {demande.patient?.prenom}</h3>
+                        <p className="text-sm text-gray-600">{demande.motif}</p>
+                        <p className="text-sm text-gray-500">Dossier: {demande.numeroDossier}</p>
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            // Logique pour accepter la demande
+                          }}
+                          disabled={isLoading}
+                        >
+                          <UserCheck className="h-4 w-4 mr-1" />
+                          Accepter
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            // Logique pour refuser la demande
+                          }}
+                          disabled={isLoading}
+                        >
+                          <UserX className="h-4 w-4 mr-1" />
+                          Refuser
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Upload de Fichier */}
         <Card className="mb-6">
@@ -403,7 +521,8 @@ export default function MedecinDashboardPage() {
             </div>
           </div>
         )}
+        </div>
       </div>
-    </div>
+    </SecureLayout>
   )
 }
